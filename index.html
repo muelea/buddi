@@ -9,7 +9,7 @@
   <meta name="twitter:creator" content="@vickie_ye_">
 
   <title>
-      Decoupling Human and Camera Motion from Videos in the Wild
+    Generative Proxemics: A Prior for 3D Social Interaction from Images
   </title>
 
   <!-- Bootstrap core CSS -->
@@ -33,25 +33,28 @@
         <div class="mx-auto text-center">
             <ul class="list-inline mb-0">
                 <li class="list-inline-item">
-                    <a href="https://people.eecs.berkeley.edu/~vye">Vickie Ye</a>
+			<a href="https://ps.is.mpg.de/person/lmueller2">Lea Müller<sup>1,2</sup></a>
+                </li>
+                <li class="list-inline-item">
+			<a href="https://people.eecs.berkeley.edu/~vye">Vickie Ye<sup>2</sup></a>
                 </li>
 
                 <li class="list-inline-item">
-                    <a href="https://geopavlakos.github.io/">Georgios Pavlakos</a>
+			<a href="https://geopavlakos.github.io/">Georgios Pavlakos<sup>2</sup></a>
                 </li>
 
                 <li class="list-inline-item">
-                    <a href="https://people.eecs.berkeley.edu/~malik/">Jitendra Malik</a>
+			<a href="https://ps.is.mpg.de/person/black">Michael Black<sup>2</sup></a>
                 </li>
 
                 <li class="list-inline-item">
-                    <a href="https://people.eecs.berkeley.edu/~kanazawa/">Angjoo Kanazawa</a>
+			<a href="https://people.eecs.berkeley.edu/~kanazawa/">Angjoo Kanazawa<sup>2</sup></a>
                 </li>
 
             </ul>
             <ul class="list-inline mb-0" id="institution">
                 <li class="list-inline-item">
-                    UC Berkeley
+			<sup>1</sup> MPI for Intelligent Systems, Tübingen      <sup>2</sup> UC Berkeley
                 </li>
             </ul>
         </div>
@@ -61,14 +64,14 @@
 		<div class="mx-auto">
 			<ul class="nav">
 				<li class="nav-item text-center">
-					<a href="https://arxiv.org/abs/2302.12827" class="nav-link" title="Link to Arxiv">
+					<a href=ARXIVURL" class="nav-link" title="Link to Arxiv">
 						<svg style="width:48px;height:48px" viewBox="0 0 24 24">
 							<path fill="currentColor" d="M16 0H8C6.9 0 6 .9 6 2V18C6 19.1 6.9 20 8 20H20C21.1 20 22 19.1 22 18V6L16 0M20 18H8V2H15V7H20V18M4 4V22H20V24H4C2.9 24 2 23.1 2 22V4H4M10 10V12H18V10H10M10 14V16H15V14H10Z" />
 						</svg><br>
 						Paper
 					</a>
 				<li class="nav-item text-center">
-					<a href="https://github.com/vye16/slahmr" class="nav-link">
+					<a href="https://github.com/muelea/buddi" class="nav-link">
 						<svg style="width:48px;height:48px" viewBox="0 0 24 24">
 							<path fill="currentColor" d="M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L6.04,7.5L12,10.85L17.96,7.5L12,4.15M5,15.91L11,19.29V12.58L5,9.21V15.91M19,15.91V9.21L13,12.58V19.29L19,15.91Z" />
 						</svg>
@@ -89,42 +92,33 @@
                 src="media/teaser_vid.mp4"
                 width="100%"
             ></video>
-			<p class="text-justify" style="font-size:90%">
-            Given a video of moving people (left), we present <b>SLAHMR</b>: Simultaneous Localication and Human Mesh Recovery,
-            a method to recover the global trajectories of the people and cameras in the world coordinate frame (right top).
-            Prior methods model human motion in the camera coordinate frame (right bottom),
-            and cannot recover the global displacement of the athlete.
-			</p>
         </div>
     </div>        
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
             <h4>Abstract</h4>
             <p class="text-justify">
-                We propose a method to reconstruct global human trajectories from videos in the wild.
-                Our optimization method decouples the camera and human motion, which allows us to place people in the same world coordinate frame.
-                Most existing methods do not model the camera motion;
-                methods that rely on the background pixels to infer 3D human
-                motion usually require a full scene reconstruction, which
-                is often not possible for in-the-wild videos.
-                However, even when existing SLAM systems cannot recover accurate scene
-                reconstructions, the background pixel motion still provides
-                enough signal to constrain the camera motion.
-                We show that relative camera estimates along with data-driven human motion priors can resolve the scene scale ambiguity and recover global human trajectories.
-                Our method robustly recovers the global 3D trajectories of people in challenging in-the-wild videos, such as PoseTrack.
-                We quantify our improvement over existing methods on 3D human dataset Egobody.
-                We further demonstrate that our recovered camera scale allows us to reason about motion of multiple people in a shared coordinate frame, which improves performance of downstream tracking in PoseTrack.
-            </p>
+        Social interaction is a fundamental aspect of human behavior and communication. 
+	The way individuals position themselves in relation to others, also known as proxemics, conveys  social cues and effects the dynamics of social interaction. 
+	We present a novel approach that learns a 3D proxemics prior of two people in close social interaction. Since collecting a large 3D dataset interacting people is a challenge, 
+	we rely  on 2D image collections where social interactions are abundant. 
+	We achieve this by resconstructing pseudo-ground truth 3D meshes of interacting people from images with an optimization approach using existing ground-truth contact maps. 
+	We then model the proxemics using a novel denoising diffusion model called BUDDI that learns the joint distribution of 
+	two people in close social interaction directly in the SMPL-X parameter space. Sampling from our <i>generative proxemics</i> model produces realistic 3D human interactions, 
+	which we validate through a user study. Additionally, we introduce a new optimization method that uses the diffusion prior to reconstruct two people in close proximity 
+	from a single image without any contact annotation. Our approach recovers more accurate and plausible 3D social interactions from noisy initial estimates and outperforms state-of-the-art methods. 
+	The data, code, and models will be made available for research purposes.
+	    </p>
         </div>
     </div>
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Overview Video</h4>
+            <h4>Generated 3D interacting humans</h4>
 			<div class="embed-responsive embed-responsive-16by9 pb-3">
 				<iframe allowfullscreen
                     class="lazyload"
-                    data-src="https://youtube.com/embed/BRdaEI0N87o"
+                    data-src="VIDEOLINK"
 					frameborder="0"
 					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
 				</iframe>
@@ -134,9 +128,9 @@
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Results on Posetrack</h4>
+            <h4>Optimization with BUDDI as prior</h4>
             <p class="text-justify">
-            We demonstrate our method on videos from the validation split of the Posetrack dataset.
+            We use BUDDI as prior in optmization.
             </p>
                 <div id="results-carousel" class="carousel">
 
@@ -145,8 +139,8 @@
                             class="lazyload"
                             preload="none"
                             data-autoplay=""
-                            data-poster="media/posetrack/024154_preview.jpg"
-                            src="media/posetrack/024154.mp4"
+                            data-poster="media/diffprior/024154_preview.jpg"
+                            src="media/diffprior/024154.mp4"
                         ></video>
                     </div>
 
@@ -155,150 +149,11 @@
                             class="lazyload"
                             preload="none"
                             data-autoplay=""
-                            data-poster="media/posetrack/024165_preview.jpg"
-                            src="media/posetrack/024165.mp4"
+                            data-poster="media/diffprior/024165_preview.jpg"
+                            src="media/diffprior/024165.mp4"
                         ></video>
                     </div>
 
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/009607_preview.jpg"
-                            src="media/posetrack/009607.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/022691_preview.jpg"
-                            src="media/posetrack/022691.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/006537_preview.jpg"
-                            src="media/posetrack/006537.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/007684_preview.jpg"
-                            src="media/posetrack/007684.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/002276_preview.jpg"
-                            src="media/posetrack/002276.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/023390_preview.jpg"
-                            src="media/posetrack/023390.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/024577_preview.jpg"
-                            src="media/posetrack/024577.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/003742-0_preview.jpg"
-                            src="media/posetrack/003742-0.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/003742-1_preview.jpg"
-                            src="media/posetrack/003742-1.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/024593_preview.jpg"
-                            src="media/posetrack/024593.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/009039_preview.jpg"
-                            src="media/posetrack/009039.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/012968_preview.jpg"
-                            src="media/posetrack/012968.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/003747_preview.jpg"
-                            src="media/posetrack/003747.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/posetrack/020910_preview.jpg"
-                            src="media/posetrack/020910.mp4"
-                        ></video>
-                    </div>
                 </div>
         </div>
     </div>
@@ -306,9 +161,9 @@
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Results on DAVIS Videos</h4>
+            <h4>FlickrCI3D Pseudo-ground truth</h4>
             <p class="text-justify">
-            We also demonstrate on a variety of other people videos, such as those from the DAVIS dataset.
+	    We fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D</a> using ground-truth contact annotations.
             </p>
                 <div id="results-carousel" class="carousel">
 
@@ -317,8 +172,8 @@
                                class="lazyload"
                                preload="none"
                                data-autoplay=""
-                               data-poster="media/davis/dance-circle_preview.jpg"
-                               src="media/davis/dance-circle.mp4"
+                               data-poster="media/pseudogt/dance-circle_preview.jpg"
+                               src="media/pseudogt/dance-circle.mp4"
                         ></video>
                     </div>
 
@@ -327,68 +182,8 @@
                                class="lazyload"
                                preload="none"
                                data-autoplay=""
-                               data-poster="media/davis/boxing-fisheye_preview.jpg"
-                               src="media/davis/boxing-fisheye.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/lindy-hop_preview.jpg"
-                               src="media/davis/lindy-hop.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/hike_preview.jpg"
-                               src="media/davis/hike.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/parkour_preview.jpg"
-                               src="media/davis/parkour.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/dance-jump_preview.jpg"
-                               src="media/davis/dance-jump.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/tennis_preview.jpg"
-                               src="media/davis/tennis.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/davis/lucia_preview.jpg"
-                               src="media/davis/lucia.mp4"
+                               data-poster="media/pseudogt/boxing-fisheye_preview.jpg"
+                               src="media/pseudogt/boxing-fisheye.mp4"
                         ></video>
                     </div>
                 </div>
@@ -397,7 +192,7 @@
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Pipeline</h4>
+            <h4>Technical appraoch</h4>
             <p class="text-justify">
                 Given an input in-the-wild video with a moving camera (left), we first predict the relative camera motion with DROID-SLAM (middle top).
                 We also recover the unique identities of people across the video and their local 3D poses with PHALP (middle bottom).
@@ -410,282 +205,16 @@
         </div>
     </div>
 
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>Comparisons with GLAMR and PHALP</h4>
-
-            <p class="text-justify">
-            We demonstrate our method compared with GLAMR, which predicts the world trajectories of people from their local poses, and PHALP, a single-view tracking method.
-            Note that the baselines don't estimate the floor plane.
-            For visualization of the baselines, we used the floor plane estimated by our method,
-            and aligned the baseline trajectory with ours using the first pose of the first detected person.
-            </p>
-                <div id="results-carousel" class="carousel">
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/002276_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/002276_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/002276_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/002276_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/006537_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/006537_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/006537_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/006537_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/007684_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/007684_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/007684_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/007684_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/009607_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/009607_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/009607_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/009607_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/023390_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/023390_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/023390_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/023390_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/002691_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/002691_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/002691_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/002691_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/012968_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/012968_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/012968_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/012968_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/009039_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/009039_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/009039_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/009039_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/016195_mpii_test_comp_glamr_preview.jpg"
-                               src="media/glamr/016195_mpii_test_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/016195_mpii_test_comp_phalp_preview.jpg"
-                               src="media/phalp/016195_mpii_test_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/recording_20211002_S03_S18_04-all-100-500_comp_glamr_preview.jpg"
-                               src="media/glamr/recording_20211002_S03_S18_04-all-100-500_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/recording_20211002_S03_S18_04-all-100-500_comp_phalp_preview.jpg"
-                               src="media/phalp/recording_20211002_S03_S18_04-all-100-500_comp_phalp.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/glamr/recording_20220315_S21_S30_02-all-0-100_comp_glamr_preview.jpg"
-                               src="media/glamr/recording_20220315_S21_S30_02-all-0-100_comp_glamr.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="media/phalp/recording_20220315_S21_S30_02-all-0-100_comp_phalp_preview.jpg"
-                               src="media/phalp/recording_20220315_S21_S30_02-all-0-100_comp_phalp.mp4"
-                        ></video>
-                    </div>
-                </div>
-        </div>
-    </div>
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>SLAHMR on all Posetrack Validation Videos</h4>
-			<div class="embed-responsive embed-responsive-16by9 pb-3">
-				<iframe allowfullscreen
-                    class="lazyload"
-                    data-src="https://youtube.com/embed/WNSwPyOR4iw"
-					frameborder="0"
-					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
-				</iframe>
-			</div>
-            Music for results video <a href="https://open.spotify.com/playlist/17q93Jm5SJq47SGHCNm75K?si=cbaf3c0f65514379">here!</a>
-        </div>
-    </div>
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>Comparisons on all Posetrack Validation Videos</h4>
-			<div class="embed-responsive embed-responsive-16by9 pb-3">
-				<iframe allowfullscreen
-                    class="lazyload"
-                    data-src="https://www.youtube.com/embed/uNSEQ3oXHqY"
-					frameborder="0"
-					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
-				</iframe>
-			</div>
-            Music for results video <a href="https://open.spotify.com/playlist/17q93Jm5SJq47SGHCNm75K?si=cbaf3c0f65514379">here!</a>
-        </div>
-    </div>
-
-
     <div class="row mb-4">
         <div class="col-md-10 mx-auto">
             <h4>BibTeX</h4>
-            <textarea id="bibtex" class="form-control" readonly>@inproceedings{ye2023slahmr,
-    title={Decoupling Human and Camera Motion from Videos in the Wild},
-    author={Ye, Vickie and Pavlakos, Georgios and Malik, Jitendra and Kanazawa, Angjoo},
-    booktitle={IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month={June},
-    year={2023}
-}</textarea>
+            <textarea id="bibtex" class="form-control" readonly>
+	       @article{mueller2023buddi,
+                 title={Generative Proxemics: A Prior for 3D Social Interaction from Images}
+	         author={M\{"u}ller, Lea and Ye, Vickie and Pavlakos, Georgios and Black, Michael and Kanazawa, Angjoo},
+                 journal={arXiv}
+                 year={2023}}
+            </textarea>
         </div>
     </div>
 
