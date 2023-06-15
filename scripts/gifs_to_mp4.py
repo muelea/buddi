@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageSequence
 
 # Specify the folder path, number of rows, and number of columns
-folder_path = "media/projectpage/sample"
+folder_path = "../projectpage/sample"
 rows = 4
 columns = 5
 
@@ -36,7 +36,7 @@ def create_gif_array(folder_path, rows, columns):
     array = np.transpose(array, (2,0,1,3))
 
     # Save the array gif
-    imageio.mimwrite(f"{folder_path}/samples.gif", array, fps=8)
+    imageio.mimwrite(f"media/samples.gif", array, fps=8)
 
 # Call the function to create the gif array and save it as an mp4 file
 create_gif_array(folder_path, rows, columns)
