@@ -12,6 +12,7 @@
     Generative Proxemics: A Prior for 3D Social Interaction from Images
   </title>
 
+
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.0/css/bootstrap.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700">
@@ -84,6 +85,15 @@
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
+            <img playsinline loop muted
+            class="lazyload"
+            preload="none"
+            data-autoplay=""
+            data-poster="https://www.dropbox.com/s/55kue6b87287jjt/teaser.png?raw=1"
+            src="https://www.dropbox.com/s/55kue6b87287jjt/teaser.png?raw=1"
+            width="100%"
+        ></img> 
+        <!--
             <video playsinline muted loop
                 class="lazyload"
                 preload="none"
@@ -92,6 +102,7 @@
                 src="media/teaser_vid.mp4"
                 width="100%"
             ></video>
+        -->
         </div>
     </div>        
     <div class="row mb-3 pt-2">
@@ -107,11 +118,11 @@
 	two people in close social interaction directly in the SMPL-X parameter space. Sampling from our <i>generative proxemics</i> model produces realistic 3D human interactions, 
 	which we validate through a user study. Additionally, we introduce a new optimization method that uses the diffusion prior to reconstruct two people in close proximity 
 	from a single image without any contact annotation. Our approach recovers more accurate and plausible 3D social interactions from noisy initial estimates and outperforms state-of-the-art methods. 
-	The data, code, and models will be made available for research purposes.
 	    </p>
         </div>
     </div>
 
+    <!-- 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
             <h4>Generated 3D interacting humans</h4>
@@ -125,66 +136,33 @@
 			</div>
         </div>
     </div>
+    -->
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Optimization with BUDDI as prior</h4>
+            <h4>Sampling meshes from BUDDI </h4>
             <p class="text-justify">
-            We sample meshes in close social interactions from BUDDI.
+                BUDDI is a diffusion model that learned the joint distribution of two people in close proxeminty. 
+                It directly generates SMPL-X body model parameters for two people, starting from random noise.
             </p>
-                <div id="results-carousel" class="carousel">
-
-                    <div class="item">
-                        <img playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/samples.gif"
-                            src="media/samples.gif"
-                        ></img>
-                    </div>
+                <div class="item">
+                    <img playsinline loop muted
+                        class="lazyload"
+                        preload="none"
+                        data-autoplay=""
+                        data-poster="https://www.dropbox.com/s/a1xojxbhiapuwq7/samples.gif?raw=1"
+                        src="https://www.dropbox.com/s/a1xojxbhiapuwq7/samples.gif?raw=1"
+                    ></img>
                 </div>
         </div>
     </div>
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Optimization with BUDDI as prior</h4>
+            <h4>Optimization with generative proxemics </h4>
             <p class="text-justify">
-            We use BUDDI as prior in optmization.
-            </p>
-                <div id="results-carousel" class="carousel">
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/diffprior/024154_preview.jpg"
-                            src="media/diffprior/024154.mp4"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video playsinline loop muted
-                            class="lazyload"
-                            preload="none"
-                            data-autoplay=""
-                            data-poster="media/diffprior/024165_preview.jpg"
-                            src="media/diffprior/024165.mp4"
-                        ></video>
-                    </div>
-
-                </div>
-        </div>
-    </div>
-
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>FlickrCI3D Pseudo-ground truth fits</h4>
-            <p class="text-justify">
-	    We fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D</a> using ground-truth contact annotations.
+                We show how BUDDI can be used as prior during optimization via an SDS loss inspired by DreamFusion. 
+                This approach does not require ground-truth contact annotations.
             </p>
                 <div id="results-carousel" class="carousel">
 
@@ -193,8 +171,8 @@
                                class="lazyload"
                                preload="none"
                                data-autoplay=""
-                               data-poster="media/pseudogt/dance-circle_preview.jpg"
-                               src="media/pseudogt/dance-circle.mp4"
+                               data-poster="https://www.dropbox.com/s/x64wxz0omuinvld/Dance_8641_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/x64wxz0omuinvld/Dance_8641_0.gif?raw=1"
                         ></video>
                     </div>
 
@@ -203,13 +181,280 @@
                                class="lazyload"
                                preload="none"
                                data-autoplay=""
-                               data-poster="media/pseudogt/boxing-fisheye_preview.jpg"
-                               src="media/pseudogt/boxing-fisheye.mp4"
+                               data-poster="https://www.dropbox.com/s/j5vj25yi99j0ly5/excited_15308_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/j5vj25yi99j0ly5/excited_15308_0.gif?raw=1"
                         ></video>
                     </div>
+                    <div class="item">
+                        <video playsinline loop muted
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/mb8878o1jtjl6gl/friends_185443_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/mb8878o1jtjl6gl/friends_185443_0.gif?raw=1"
+                        ></video>
+                    </div>
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/p3cvyyq8xtvqgz4/friends_394638_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/p3cvyyq8xtvqgz4/friends_394638_0.gif?raw=1"
+                        ></video>
+                    </div>
+                    <div class="item">
+                        <video playsinline loop muted
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/5de6g1nldnl5hek/team_188378_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/5de6g1nldnl5hek/team_188378_0.gif?raw=1"
+                        ></video>
+                    </div>
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/8t30u4vutly7zc1/youth_11137_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/8t30u4vutly7zc1/youth_11137_0.gif?raw=1"
+                        ></video>
+                    </div>        
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/7i88pvqpie42pwi/youth_86332_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/7i88pvqpie42pwi/youth_86332_0.gif?raw=1"
+                        ></video>
+                    </div>      
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/8c8pbs9kiflheup/college_41591_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/8c8pbs9kiflheup/college_41591_0.gif?raw=1"
+                        ></video>
+                    </div>      
+
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-3 pt-2">
+            <div class="col-md-10 mx-auto">
+                <h4>Comparison 'Optimization with BUDDI' vs. BEV</h4>
+                <p class="text-justify">
+                    <span style="text-align:left;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Optimization with BUDDI</span>
+                    <span style="float:right;">
+                        BEV &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    </span>
+                </p>
+                    <div id="results-carousel" class="carousel">
+    
+                        <div class="item">
+                            <video playsinline loop muted
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/x1ae3ov6mnco7nb/boys_2190_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/x1ae3ov6mnco7nb/boys_2190_0.gif?raw=1"
+                            ></video>
+                        </div>
+   ""
+                        <div class="item">
+                            <video loop muted playsinline
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/tta685rv7ad89mi/boys_9243_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/tta685rv7ad89mi/boys_9243_0.gif?raw=1"
+                            ></video>
+                        </div>
+
+                        <div class="item">
+                            <video playsinline loop muted
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/xh6o1pgxobtvdgm/college_41591_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/xh6o1pgxobtvdgm/college_41591_0.gif?raw=1"
+                            ></video>
+                        </div>
+    
+                        <div class="item">
+                            <video loop muted playsinline
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/2ahes80az8aqr21/college_201760_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/2ahes80az8aqr21/college_201760_0.gif?raw=1"
+                            ></video>
+                        </div>                        <div class="item">
+                            <video playsinline loop muted
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/q0vvpnu2441ip0m/Couple_13467_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/q0vvpnu2441ip0m/Couple_13467_0.gif?raw=1"
+                            ></video>
+                        </div>
+    
+                        <div class="item">
+                            <video loop muted playsinline
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/n25ikee1p8rht7n/fight_13567_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/n25ikee1p8rht7n/fight_13567_0.gif?raw=1"
+                            ></video>
+                        </div>                        <div class="item">
+                            <video playsinline loop muted
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/d4rcw0w15bxnliw/excited_15308_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/d4rcw0w15bxnliw/excited_15308_0.gif?raw=1"
+                            ></video>
+                        </div>
+    
+                        <div class="item">
+                            <video loop muted playsinline
+                                   class="lazyload"
+                                   preload="none"
+                                   data-autoplay=""
+                                   data-poster="https://www.dropbox.com/s/jv724gadth2yjvm/Family_5860_0.gif?raw=1"
+                                   src="https://www.dropbox.com/s/jv724gadth2yjvm/Family_5860_0.gif?raw=1"
+                            ></video>
+                        </div>
+
+
+                    </div>
+            </div>
+        </div>
+
+    <div class="row mb-3 pt-2">
+        <div class="col-md-10 mx-auto">
+            <h4>FlickrCI3D Pseudo-ground truth fits</h4>
+            <p class="text-justify">
+	        To train BUDDI, we create SMPL-X meshes in interaction. To do this, we fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D Signatures</a> 
+            using the provided ground-truth contact annotations. Here you can see examples of FlickrCI3D PGT.
+            </p>
+                <div id="results-carousel" class="carousel">
+
+                    <div class="item">
+                        <video playsinline loop muted
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/sdoz7z0pchk9jlb/boys_91580_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/sdoz7z0pchk9jlb/boys_91580_0.gif?raw=1"
+                        ></video>
+                    </div>
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/16n4nbe9o5mtbie/excited_15308_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/16n4nbe9o5mtbie/excited_15308_0.gif?raw=1"
+                        ></video>
+                    </div>
+                    <div class="item">
+                        <video playsinline loop muted
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/x6sgm8gcblcgi28/youth_122268_2.gif?raw=1"
+                               src="https://www.dropbox.com/s/x6sgm8gcblcgi28/youth_122268_2.gif?raw=1"
+                        ></video>
+                    </div>
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/q0g1a4qvknbwbvv/friends_200690_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/q0g1a4qvknbwbvv/friends_200690_0.gif?raw=1"
+                        ></video>
+                    </div>
+                    <div class="item">
+                        <video playsinline loop muted
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/4cgztabmcyisj08/highfive_190499_1.gif?raw=1"
+                               src="https://www.dropbox.com/s/4cgztabmcyisj08/highfive_190499_1.gif?raw=1"
+                        ></video>
+                    </div>
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/9tjvxcgd0s371gc/youth_11137_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/9tjvxcgd0s371gc/youth_11137_0.gif?raw=1"
+                        ></video>
+                    </div>        
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/zdtt2vyb76tc0mc/friends_399113_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/zdtt2vyb76tc0mc/friends_399113_0.gif?raw=1"
+                        ></video>
+                    </div>      
+
+                    <div class="item">
+                        <video loop muted playsinline
+                               class="lazyload"
+                               preload="none"
+                               data-autoplay=""
+                               data-poster="https://www.dropbox.com/s/vwziufv4e7ljruz/friends_394638_0.gif?raw=1"
+                               src="https://www.dropbox.com/s/vwziufv4e7ljruz/friends_394638_0.gif?raw=1"
+                        ></video>
+                    </div>      
+                    
+
                 </div>
         </div>
     </div>
+
+
+
+    <div class="row mb-3 pt-2">
+        <div class="col-md-10 mx-auto">
+            <h4>How does BUDDI work?</h4>
+            <p class="text-justify">
+                Given a training image collection of people in close proximity (FlickrCI3D Signatures), we create pseudo-ground truth SMPL-X fits via optimization
+                using ground-truth contact annotations. SMPL-X is a human body model that maps pose, shape, global orientation and translation (among others) to 
+                a 3D mesh. Given the FlickrCI3D PGT, we propose a diffusion-based approach that learns a 3D generative model of two people in close social 
+                interaction. BUDDI directly operates on SMPL-X parameters through a transformer backbone. he model can be used to generate unconditional
+                samples or also as a social prior in the downstream optimization task of reconstructing 3D people in close proximity from images,
+                without any extra annotation such as contact maps. 
+            </p>
+            <embed src="https://www.dropbox.com/s/55vufrmcerbfw9c/sds_loss_v20.png?raw=1" width="100%"/>
+            <p class="text-justify"> 
+                To use BUDDI as a prior in optimization, we adopt the SDS loss presented in previous work like DreamFusion. When fitting SMPL-X to image keypoints, 
+                in each optimization iteration, we diffuse the current estimate diffuse it and let BUDDI propose a refined estimate. The refined estimate is 
+                closer to the true distribution of interacting people and serves as prior via an L2-Loss. This enables us to fit 3D meshes to images of closely 
+                interacting people without replying on ground-truth contact annotations at test time.
+            </p>
+        </div>
+    </div>
+
 
     <div class="row mb-4">
         <div class="col-md-10 mx-auto">
