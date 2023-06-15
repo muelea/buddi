@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="description" content="SLAHMR Project Page">
-  <meta name="author" content="Vickie Ye">
+  <meta name="description" content="BUDDI Project Page">
+  <meta name="author" content="Lea Müller">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta property="og:image" content="media/teaser.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:creator" content="@vickie_ye_">
+  <meta name="twitter:creator" content="@LeaMue27">
 
   <title>
     Generative Proxemics: A Prior for 3D Social Interaction from Images
@@ -33,7 +33,7 @@
         <div class="mx-auto text-center">
             <ul class="list-inline mb-0">
                 <li class="list-inline-item">
-			<a href="https://ps.is.mpg.de/person/lmueller2">Lea Müller<sup>1,2</sup></a>
+			<a href="https://ps.is.mpg.de/person/lmueller2">Lea Müller<sup>1</sup></a>
                 </li>
                 <li class="list-inline-item">
 			<a href="https://people.eecs.berkeley.edu/~vye">Vickie Ye<sup>2</sup></a>
@@ -161,7 +161,7 @@
 
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>FlickrCI3D Pseudo-ground truth</h4>
+            <h4>FlickrCI3D Pseudo-ground truth fits</h4>
             <p class="text-justify">
 	    We fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D</a> using ground-truth contact annotations.
             </p>
@@ -187,21 +187,6 @@
                         ></video>
                     </div>
                 </div>
-        </div>
-    </div>
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>Technical appraoch</h4>
-            <p class="text-justify">
-                Given an input in-the-wild video with a moving camera (left), we first predict the relative camera motion with DROID-SLAM (middle top).
-                We also recover the unique identities of people across the video and their local 3D poses with PHALP (middle bottom).
-                These are used to initialize the proposed joint optimization problem,
-                which is performed over multiple stages,
-                and solves for the trajectories of the moving people in the world coordinate frame,
-                as well as the scale and ground of the world.
-            </p>
-            <img width=100% src="media/pipeline_big.png"/>
         </div>
     </div>
 
