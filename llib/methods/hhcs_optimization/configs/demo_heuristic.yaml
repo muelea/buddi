@@ -1,0 +1,90 @@
+logging:
+  base_folder: 'demo/optimization/'
+  run: 'fit_heuristic1stage_flickrci3ds_demo'
+  checkpoint_folder: '' 
+  validation_folder: ''
+datasets:
+  train_names: []
+  train_composition: []
+  val_names: []
+  test_names: ['demo'] # to run on flickr test set, set test_names to 'demo' and specify data_folder under demo below
+  demo:
+    original_data_folder: 'datasets/original/FlickrCI3D_Signatures/demo'
+    image_folder: 'images'
+    openpose_folder: 'keypoints/keypoints'
+    bev_folder: 'bev'
+    vitpose_folder: 'vitpose'
+    has_gt_contact_annotation: True
+    unique_keypoint_match: False # if True, we select the body with the most keypoints matched to the ground truth
+  flickrci3ds:
+    processed_data_folder: 'datasets/processed/FlickrCI3D_Signatures'
+    openpose_folder: 'keypoints/keypoints'
+    pseudogt_folder: '' # we're creating the pseudo ground-truth here, so doesn't exit yet
+  augmentation:
+    use: False
+  processing:
+    use: False
+model:
+  optimization:
+    type: 'hhcs'
+    print_loss: True
+    use_diffusion: False
+    use_gt_contact_map: True
+    pretrained_diffusion_model_cfg: 'essentials/buddi/config_v01.yaml'
+    pretrained_diffusion_model_ckpt: 'essentials/buddi/buddi_checkpoint_v01.pt'
+    sds_type: 'fixed'
+    sds_t_fixed: 20
+    sds_t_range: [25, 75]
+    sds_t_adaptive_i: [1.0, 0.8, 0.6, 0.4, 0.2]
+    sds_t_adaptive_t: [100, 80, 60, 40, 20]    
+    hhcs:
+      max_iters: [1000]
+      num_prev_steps: 20
+      slope_tol: -0.0001
+    optimizer: 
+      type: 'adam'
+      adam:
+        lr: 0.01
+    losses:
+      keypoint2d: # 2d keypoint loss 
+        type: 'l2'
+        squared: True
+        weighted: True
+        weight: [0.1]
+      hhc_contact: # sum over minimum distance between regions in contact
+        type: 'hhcdistmin'
+        r2r_dist_type: 'min'
+        weight: [10000.0]
+      hhc_contact_general: # contact loss that resolves intersection and brings part close to each other in contact. Memory intense.
+        type: 'hhcgen'
+        weight: [250.0] # must be set to 0.0, because loss is not implemented
+      init_pose: # penalize deviation from inital bev pose
+        type: 'l2'
+        squared: True
+        d1_aggregation: 'none'
+        weight: [50.0]
+      pose_prior: # usual gmm pose prior
+        type: 'gmm'
+        weight: [1.0]
+      shape_prior: # usual shape prior
+        type: 'l2'
+        squared: True
+        weight: [200.0]
+body_model:
+  type: 'smplx'
+  smplx:
+    init:
+      batch_size: 1
+      gender: 'neutral'
+      age: 'kid'
+      joint_mapper:
+        use: True
+        type: 'smpl_to_openpose'
+        smpl_to_openpose:
+          use_hands: False
+          use_face: False
+camera:
+  type: 'perspective'
+  perspective:
+    afov_horizontal: 60 # inital angular field of view compatible with bev output
+    roll: 180 # inital camera roll compatible with bev output
