@@ -1,6 +1,6 @@
 # BUDDI
 <b> Generative Proxemics: A Prior for 3D Social Interaction from Images </b>\
-[[Project Page](some.url)] [[arXiv](some.url)]
+[[Project Page](https://muelea.github.io/buddi/)] [[arXiv](some.url)]
 
 ![Teaser](documentation/images/teaser.png)
 
