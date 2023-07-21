@@ -56,7 +56,8 @@ def create_gif_array(folder_fit_path, img_name, gif_path, src_path):
     # Save the array gif
     output_folder = folder_fit_path + '_stacked'
     os.makedirs(output_folder, exist_ok=True)
-    imageio.mimwrite(output_folder + f'/{img_name}.gif', array, fps=8)
+    #imageio.mimwrite(output_folder + f'/{img_name}.gif', array, fps=8)
+    imageio.imwrite(output_folder + f'/{img_name}.png', array[0])
 
 def compare_fits(base_path, img_name='boys_2190_0', f1='fit_pseudogt', f2='fit_diffprior'):
     NEW_HEIGHT = 512
@@ -82,7 +83,8 @@ def compare_fits(base_path, img_name='boys_2190_0', f1='fit_pseudogt', f2='fit_d
     # Save the array gif in new folder names f1_f2 under base_path
     output_folder = f'{base_path}{f1}_{f2}'
     os.makedirs(output_folder, exist_ok=True)
-    imageio.mimwrite( f'{output_folder}/{img_name}.gif', array, fps=8)
+    #imageio.mimwrite( f'{output_folder}/{img_name}.gif', array, fps=8)
+    imageio.imwrite( f'{output_folder}/{img_name}.png', array[0])
 
 # Call the function to create the gif array and save it as an mp4 file
 fits = ['fit_pseudogt', 'fit_diffprior']
@@ -93,7 +95,8 @@ for fit in fits:
     for img_name in img_names:
         src_path = os.path.join(folder_path, 'src_images', '_'.join(img_name.split('_')[:-1]) + '.png')
         gif_path = os.path.join(folder_fit_path, img_name, img_name)
-        if not os.path.exists(folder_fit_path + '_stacked' + f'/{img_name}.gif'):
+        #if not os.path.exists(folder_fit_path + '_stacked' + f'/{img_name}.gif'):
+        if True:
             print(folder_fit_path + '_stacked' + f'/{img_name}.gif')
             create_gif_array(folder_fit_path, img_name, gif_path, src_path)
 
@@ -107,6 +110,7 @@ for fit1 in fits1:
             img_names = os.listdir(folder_fit1_path)
             img_names.sort()
             for img_name in img_names:
-                if not os.path.exists(f'{folder_path}/{fit1}_{fit2}/{img_name}.gif'):
+                #if not os.path.exists(f'{folder_path}/{fit1}_{fit2}/{img_name}.gif'):
+                if True:
                     print(f'{folder_path}{fit1}_{fit2}/{img_name}.gif')
                     compare_fits(folder_path, img_name, fit1, fit2)
