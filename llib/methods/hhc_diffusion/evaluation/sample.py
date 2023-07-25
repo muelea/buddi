@@ -17,7 +17,6 @@ from llib.visualization.diffusion_eval import save_gif, render_images
 from llib.visualization.scripts.tools import build_renderer, render_360_views
 
 from llib.methods.hhc_diffusion.evaluation.utils import *
-from llib.methods.hhc_diffusion.evaluation.eval import eval_diffusion
 
 import matplotlib.pyplot as plt
 
@@ -410,16 +409,6 @@ def main(cfg, cmd_args):
     #         render_images(
     #             given_vertices, diffusion_module, 1, OUTPUT_FOLDER, img_prefix="gt_"
     #         )
-
-    # create random vector in shape of final_vertices
-    if cmd_args.run_eval:
-        mesh_metrics, nn_metrics = eval_diffusion(
-            generated_vertices=final_vertices,
-            ground_truth_vertices=torch.randn_like(final_vertices),
-            result_folder=OUTPUT_FOLDER,
-            body_model_utils_folder=cmd_args.body_model_utils_folder,
-        )
-
     return
     # Render meshes and create gif ot each timestep
     if cmd_args.save_vis:
