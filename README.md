@@ -15,7 +15,7 @@
 ... [FlickrCI3D PGT](#optimization-with-ground-truth-contact-maps), we use ground-truth contact annotations to create pseudo ground-truth fits for [FlickrCI3D](https://ci3d.imar.ro).
 
 ## NEWS!!
-:fire: We have a new version of BUDDI with BEV conditioning. This repo is still for the old version of BUDDI. Code updateds will follow and be announced here. :fire:
+We have a new version of BUDDI with BEV conditioning. This repo is still for the old version of BUDDI. Code updateds will follow and be announced here.
 
 ## Release status
 
