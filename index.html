@@ -1,12 +1,72 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="description" content="BUDDI Project Page">
-  <meta name="author" content="Lea Müller">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta property="og:image" content="media/teaser.png">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:creator" content="@LeaMue27">
+<html lang="en">
+    
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="BUDDI Project Page">
+    <meta name="author" content="Lea Müller">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta property="og:image" content="media/teaser.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:creator" content="@LeaMue27">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        /* Style to ensure items appear horizontally */
+        .teaser-container {
+          display: flex;
+        }
+        /* Style to ensure items appear horizontally */
+        .comp-container {
+          display: flex;
+        }        
+        /* Style to set equal size for images */
+        .teaser-image {
+          flex: 1; /* Equal width for both images */
+          width: 10%; /* Set width to 50% */
+          height: auto; /* Maintain aspect ratio */
+          object-fit: contain; /* Scale images while maintaining aspect ratio */
+        }
+
+        /* Style to set video height equal to images */
+        .teaser-video {
+        flex: 1; /* Takes remaining space */
+        width: 40%; /* Set width to 40% */
+        height: auto; /* Maintain aspect ratio */
+        object-fit: cover; /* Crop the video to fit within the specified width and height */
+        }
+        /* Style to set equal size for images */
+        .comp-image {
+          width: 30%; /* Set width to 50% */
+          height: auto; /* Maintain aspect ratio */
+          object-fit: contain; /* Scale images while maintaining aspect ratio */
+        } 
+        /* Style to set video height equal to images */
+        .comp-video {
+        flex: 1;  
+        width: 34%;
+        }
+        /* Style to ensure items appear horizontally */
+        .teaser-container-click {
+          display: flex;
+          flex-wrap: wrap;
+        }
+
+        /* Style to set equal size for images */
+        .teaser-image-click {
+            width: 10%; /* Adjust the percentage as needed */
+            height: 50px;
+            object-fit: contain; /* Scale images while maintaining aspect ratio */
+            cursor: pointer; /* Change cursor to pointer on hover */
+        }        
+
+      </style>
+
+  </head>
 
   <title>
     Generative Proxemics: A Prior for 3D Social Interaction from Images
@@ -35,7 +95,7 @@
         <div class="mx-auto text-center">
             <ul class="list-inline mb-0">
                 <li class="list-inline-item">
-			<a href="https://ps.is.mpg.de/person/lmueller2">Lea Müller<sup>1</sup></a>
+			<a href="https://sites.google.com/view/muelea">Lea Müller<sup>1</sup></a>
                 </li>
                 <li class="list-inline-item">
 			<a href="https://people.eecs.berkeley.edu/~vye">Vickie Ye<sup>2</sup></a>
@@ -64,7 +124,9 @@
 
 	<div class="row mb-2" id="links">
 		<div class="mx-auto">
+
 			<ul class="nav">
+
 				<li class="nav-item text-center">
 					<a href="https://arxiv.org/abs/2306.09337" class="nav-link" title="Link to Arxiv">
 						<svg style="width:48px;height:48px" viewBox="0 0 24 24">
@@ -80,45 +142,132 @@
 						<br>
 						Code
 					</a>
+
+                    <li class="nav-item text-center">
+                        <a href="#dataSection" class="nav-link">
+                            <svg style="width:48px;height:48px" viewBox="0 0 24 24">
+                                <!-- Rectangle representing a dataset -->
+                                <rect fill="none" stroke="currentColor" stroke-width="2" x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                                <!-- Dots inside the dataset to represent data points -->
+                                <circle fill="currentColor" cx="8" cy="8" r="2"/>
+                                <circle fill="currentColor" cx="16" cy="8" r="2"/>
+                                <circle fill="currentColor" cx="12" cy="16" r="2"/>
+                            </svg>
+                            <br>
+                            Data
+                        </a>
+
+                        <li class="nav-item text-center">
+                            <a href="#bibtexSection" class="nav-link">
+                                <svg style="width:48px;height:48px" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-9h2v2h-2zm0 4h2v2h-2zm1-8.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
+                                </svg>
+                                <br>
+                                BiBTeX
+                            </a>
                 </ul>
+
             </div>
         </div>
 
+
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <img playsinline loop muted
+            <!-- <img playsinline loop muted
             class="lazyload"
             preload="none"
             data-autoplay=""
-            data-poster="meadia/teaser.png"
-            src="media/teaser.png"
+            data-poster="meadia/teaser_new.png"
+            src="media/teaser_new.pdf"
             width="100%"
-        ></img> 
-        <!--
-            <video playsinline muted loop
+            ></img> -->
+            <div class="teaser-container" id="teaser-container" style="visibility: none">
+
+                <img 
+                class="teaser-image"
+                id="teaser-image"
+                src="media/images/highfive_203708.png"
+                ></img>
+
+                <img 
+                class="teaser-image"
+                id="teaser-image-overlay"
+                src="media/images/highfive_203708_overlay.png"
+                ></img>
+
+                <video autoplay muted
+                    id="teaser-video"
+                    class="teaser-video"
+                    src="media/videos/highfive_203708.mp4"
+                ></video> 
+            </div>
+            
+            <p></p>
+
+            <div class="teaser-container-click">
+                <!-- Add 10 images with unique IDs and onclick events -->
+                <img class="teaser-image-click" id="img1" src="media/images/highfive_203708.png" alt="Image 1" onclick="updateContainer('highfive_203708')">
+                <img class="teaser-image-click" id="img2" src="media/images/persons_7873.png" alt="Image 2" onclick="updateContainer('persons_7873')">
+                <img class="teaser-image-click" id="img3" src="media/images/love_41423.png" alt="Image 1" onclick="updateContainer('love_41423')">
+                <img class="teaser-image-click" id="img4" src="media/images/highfive_459334.png" alt="Image 2" onclick="updateContainer('highfive_459334')">
+                <img class="teaser-image-click" id="img5" src="media/images/friends_519627.png" alt="Image 1" onclick="updateContainer('friends_519627')">
+                <img class="teaser-image-click" id="img6" src="media/images/highfive_127731.png" alt="Image 2" onclick="updateContainer('highfive_127731')">
+                <img class="teaser-image-click" id="img4" src="media/images/Hug_1074.png" alt="Image 2" onclick="updateContainer('Hug_1074')">
+                <img class="teaser-image-click" id="img5" src="media/images/People_335462.png" alt="Image 1" onclick="updateContainer('People_335462')">
+                <img class="teaser-image-click" id="img6" src="media/images/excited_15308.png" alt="Image 2" onclick="updateContainer('excited_15308')">
+                <img class="teaser-image-click" id="img6" src="media/images/friends_347546.png" alt="Image 2" onclick="updateContainer('friends_347546')">
+                <!-- Add 8 more images with similar structure -->
+            </div>            
+            <p></p>
+            <div class="teaser-container-click">
+                <!-- Add 10 images with unique IDs and onclick events -->
+                <img class="teaser-image-click" id="img1" src="media/images/Dance_7721.png" alt="Image 1" onclick="updateContainer('Dance_7721')">
+                <img class="teaser-image-click" id="img2" src="media/images/People_352214.png" alt="Image 2" onclick="updateContainer('People_352214')">
+                <img class="teaser-image-click" id="img3" src="media/images/friends_394638.png" alt="Image 1" onclick="updateContainer('friends_394638')">
+                <img class="teaser-image-click" id="img4" src="media/images/highfive_117471.png" alt="Image 2" onclick="updateContainer('highfive_117471')">
+                <img class="teaser-image-click" id="img5" src="media/images/journey_58.png" alt="Image 1" onclick="updateContainer('journey_58')">
+                <img class="teaser-image-click" id="img6" src="media/images/People_751835.png" alt="Image 2" onclick="updateContainer('People_751835')">
+                <img class="teaser-image-click" id="img4" src="media/images/friends_519627.png" alt="Image 2" onclick="updateContainer('friends_519627')">
+                <img class="teaser-image-click" id="img5" src="media/images/friends_388574.png" alt="Image 1" onclick="updateContainer('friends_388574')">
+                <img class="teaser-image-click" id="img6" src="media/images/love_175948.png" alt="Image 2" onclick="updateContainer('love_175948')">
+                <img class="teaser-image-click" id="img6" src="media/images/highfive_136078.png" alt="Image 2" onclick="updateContainer('highfive_136078')">
+                <!-- Add 8 more images with similar structure -->
+            </div>      
+
+            <!-- <video playsinline muted loop
                 class="lazyload"
                 preload="none"
                 data-autoplay=""
                 data-poster="media/teaser_poster.jpg"
-                src="media/teaser_vid.mp4"
-                width="100%"
-            ></video>
-        -->
+                src="media/highfive_203708_zoom.mov"
+                width="15%"
+                style="margin-top: -5%; margin-bottom: -5%"
+            ></video> -->
         </div>
-    </div>        
+    </div>       
+    
+    <div class="row mb-3 pt-2">
+        <div class="col-md-10 mx-auto">
+            <p class="text-justify">
+                <b>
+                    Our Method estimates the poses of two people in close social interaction. We first train a generative model that learns the joint distribution of two interacting people.
+                    Then we use this model as prior during optimization when fitting two SMPL-X body models to detected 2D joint locations.
+                </b>
+            </p>
+        </div>
+    </div>
+    
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
             <h4>Abstract</h4>
             <p class="text-justify">
-        Social interaction is a fundamental aspect of human behavior and communication. 
-	The way individuals position themselves in relation to others, also known as proxemics, conveys  social cues and effects the dynamics of social interaction. 
-	We present a novel approach that learns a 3D proxemics prior of two people in close social interaction. Since collecting a large 3D dataset interacting people is a challenge, 
-	we rely  on 2D image collections where social interactions are abundant. 
-	We achieve this by resconstructing pseudo-ground truth 3D meshes of interacting people from images with an optimization approach using existing ground-truth contact maps. 
-	We then model the proxemics using a novel denoising diffusion model called BUDDI that learns the joint distribution of 
-	two people in close social interaction directly in the SMPL-X parameter space. Sampling from our <i>generative proxemics</i> model produces realistic 3D human interactions, 
-	which we validate through a user study. Additionally, we introduce a new optimization method that uses the diffusion prior to reconstruct two people in close proximity 
-	from a single image without any contact annotation. Our approach recovers more accurate and plausible 3D social interactions from noisy initial estimates and outperforms state-of-the-art methods. 
+                Social interaction is a fundamental aspect of human behavior and communication. The way individuals position themselves in relation to others, also known as proxemics, conveys  social cues and affects the dynamics of 
+                social interaction. Reconstructing such interaction from images presents challenges because of mutual occlusion and the limited availability of large training datasets. To address this, we present a novel approach 
+                that learns a prior over the 3D proxemics two people in close social interaction and demonstrate its use for single-view 3D reconstruction. 
+                We start by creating 3D training data of interacting people using image datasets with contact annotations. We then model the proxemics using a novel denoising diffusion model called BUDDI that learns the joint 
+                distribution over the poses of two people in close social interaction. Sampling from our generative proxemics model produces realistic 3D human interactions, which we validate through a perceptual study. 
+                We use BUDDI in reconstructing two people in close proximity from a single image without any contact annotation via an optimization approach that uses the diffusion model as a prior. 
+                Our approach recovers accurate and plausible 3D social interactions from noisy initial estimates, outperforming state-of-the-art methods.
 	    </p>
         </div>
     </div>
@@ -142,314 +291,151 @@
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
             <h4>Sampling meshes from BUDDI </h4>
-            <p class="text-justify">
-                BUDDI is a diffusion model that learned the joint distribution of two people in close proxeminty. 
-                It directly generates SMPL-X body model parameters for two people, starting from random noise.
-            </p>
                 <div class="item">
-                    <img playsinline loop muted
-                        class="lazyload"
-                        preload="none"
-                        data-autoplay=""
+                        <video autoplay muted control
+                        id="samples-video"
                         width="100%"
-                        data-poster="media/samples.gif"
-                        src="media/samples.gif"
-                    ></img>
+                        src="media/samples.m4v"
+                    ></video> 
                 </div>
-        </div>
-    </div>
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>Optimization with generative proxemics </h4>
-            <p class="text-justify">
-                We show how BUDDI can be used as prior during optimization via an SDS loss inspired by DreamFusion. 
-                This approach does not require ground-truth contact annotations.
-            </p>
-                <div id="results-carousel" class="carousel">
-
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/x64wxz0omuinvld/Dance_8641_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/x64wxz0omuinvld/Dance_8641_0.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/j5vj25yi99j0ly5/excited_15308_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/j5vj25yi99j0ly5/excited_15308_0.gif?raw=1"
-                        ></video>
-                    </div>
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/mb8878o1jtjl6gl/friends_185443_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/mb8878o1jtjl6gl/friends_185443_0.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/p3cvyyq8xtvqgz4/friends_394638_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/p3cvyyq8xtvqgz4/friends_394638_0.gif?raw=1"
-                        ></video>
-                    </div>
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/5de6g1nldnl5hek/team_188378_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/5de6g1nldnl5hek/team_188378_0.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/8t30u4vutly7zc1/youth_11137_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/8t30u4vutly7zc1/youth_11137_0.gif?raw=1"
-                        ></video>
-                    </div>        
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/7i88pvqpie42pwi/youth_86332_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/7i88pvqpie42pwi/youth_86332_0.gif?raw=1"
-                        ></video>
-                    </div>      
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/8c8pbs9kiflheup/college_41591_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/8c8pbs9kiflheup/college_41591_0.gif?raw=1"
-                        ></video>
-                    </div>      
-
-                </div>
-            </div>
-        </div>
-        
-        <div class="row mb-3 pt-2">
-            <div class="col-md-10 mx-auto">
-                <h4>Comparison 'Optimization with BUDDI' vs. BEV</h4>
                 <p class="text-justify">
-                    <span style="text-align:left;">
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Optimization with BUDDI</span>
-                    <span style="float:right;">
-                        BEV &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    </span>
+                    BUDDI is a diffusion model that learned the joint distribution of two people in close proxeminty. 
+                    It directly generates SMPL-X body model parameters for two people, starting from random noise.
                 </p>
-                    <div id="results-carousel" class="carousel">
-    
-                        <div class="item">
-                            <video playsinline loop muted
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/x1ae3ov6mnco7nb/boys_2190_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/x1ae3ov6mnco7nb/boys_2190_0.gif?raw=1"
-                            ></video>
-                        </div>
-   ""
-                        <div class="item">
-                            <video loop muted playsinline
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/tta685rv7ad89mi/boys_9243_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/tta685rv7ad89mi/boys_9243_0.gif?raw=1"
-                            ></video>
-                        </div>
-
-                        <div class="item">
-                            <video playsinline loop muted
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/xh6o1pgxobtvdgm/college_41591_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/xh6o1pgxobtvdgm/college_41591_0.gif?raw=1"
-                            ></video>
-                        </div>
-    
-                        <div class="item">
-                            <video loop muted playsinline
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/2ahes80az8aqr21/college_201760_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/2ahes80az8aqr21/college_201760_0.gif?raw=1"
-                            ></video>
-                        </div>                        <div class="item">
-                            <video playsinline loop muted
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/q0vvpnu2441ip0m/Couple_13467_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/q0vvpnu2441ip0m/Couple_13467_0.gif?raw=1"
-                            ></video>
-                        </div>
-    
-                        <div class="item">
-                            <video loop muted playsinline
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/n25ikee1p8rht7n/fight_13567_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/n25ikee1p8rht7n/fight_13567_0.gif?raw=1"
-                            ></video>
-                        </div>                        <div class="item">
-                            <video playsinline loop muted
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/d4rcw0w15bxnliw/excited_15308_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/d4rcw0w15bxnliw/excited_15308_0.gif?raw=1"
-                            ></video>
-                        </div>
-    
-                        <div class="item">
-                            <video loop muted playsinline
-                                   class="lazyload"
-                                   preload="none"
-                                   data-autoplay=""
-                                   data-poster="https://www.dropbox.com/s/jv724gadth2yjvm/Family_5860_0.gif?raw=1"
-                                   src="https://www.dropbox.com/s/jv724gadth2yjvm/Family_5860_0.gif?raw=1"
-                            ></video>
-                        </div>
-
-
-                    </div>
-            </div>
-        </div>
-
-    <div class="row mb-3 pt-2">
-        <div class="col-md-10 mx-auto">
-            <h4>FlickrCI3D Pseudo-ground truth fits</h4>
-            <p class="text-justify">
-	        To train BUDDI, we create SMPL-X meshes in interaction. To do this, we fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D Signatures</a> 
-            using the provided ground-truth contact annotations. Here you can see examples of FlickrCI3D PGT.
-            </p>
-                <div id="results-carousel" class="carousel">
-
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/sdoz7z0pchk9jlb/boys_91580_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/sdoz7z0pchk9jlb/boys_91580_0.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/16n4nbe9o5mtbie/excited_15308_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/16n4nbe9o5mtbie/excited_15308_0.gif?raw=1"
-                        ></video>
-                    </div>
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/x6sgm8gcblcgi28/youth_122268_2.gif?raw=1"
-                               src="https://www.dropbox.com/s/x6sgm8gcblcgi28/youth_122268_2.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/q0g1a4qvknbwbvv/friends_200690_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/q0g1a4qvknbwbvv/friends_200690_0.gif?raw=1"
-                        ></video>
-                    </div>
-                    <div class="item">
-                        <video playsinline loop muted
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/4cgztabmcyisj08/highfive_190499_1.gif?raw=1"
-                               src="https://www.dropbox.com/s/4cgztabmcyisj08/highfive_190499_1.gif?raw=1"
-                        ></video>
-                    </div>
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/9tjvxcgd0s371gc/youth_11137_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/9tjvxcgd0s371gc/youth_11137_0.gif?raw=1"
-                        ></video>
-                    </div>        
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/zdtt2vyb76tc0mc/friends_399113_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/zdtt2vyb76tc0mc/friends_399113_0.gif?raw=1"
-                        ></video>
-                    </div>      
-
-                    <div class="item">
-                        <video loop muted playsinline
-                               class="lazyload"
-                               preload="none"
-                               data-autoplay=""
-                               data-poster="https://www.dropbox.com/s/vwziufv4e7ljruz/friends_394638_0.gif?raw=1"
-                               src="https://www.dropbox.com/s/vwziufv4e7ljruz/friends_394638_0.gif?raw=1"
-                        ></video>
-                    </div>      
-                    
-
-                </div>
         </div>
     </div>
 
-
-
+    
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>How does BUDDI work?</h4>
-            <p class="text-justify">
-                Given a training image collection of people in close proximity (FlickrCI3D Signatures), we create pseudo-ground truth SMPL-X fits via optimization
-                using ground-truth contact annotations. SMPL-X is a human body model that maps pose, shape, global orientation and translation (among others) to 
-                a 3D mesh. Given the FlickrCI3D PGT, we propose a diffusion-based approach that learns a 3D generative model of two people in close social 
-                interaction. BUDDI directly operates on SMPL-X parameters through a transformer backbone. he model can be used to generate unconditional
-                samples or also as a social prior in the downstream optimization task of reconstructing 3D people in close proximity from images,
-                without any extra annotation such as contact maps. 
-            </p>
-            <embed src="https://www.dropbox.com/s/55vufrmcerbfw9c/sds_loss_v20.png?raw=1" width="100%"/>
+            <h4>Comparison <i>Optimization with BUDDI</i> (right) with BEV (left)</h4>
+
+            <div class="comp-container" id="comp-container" style="visibility: none">
+                
+                <video autoplay muted
+                    id="comp-video-bev"
+                    class="comp-video"
+                    src="media/videos_bev/highfive_203708.mp4"
+                    onclick="ZoomImage()"
+                ></video> 
+
+                <img 
+                class="comp-image"
+                id="comp-image"
+                src="media/images/highfive_203708.png"
+                ></img>
+
+
+                <video autoplay muted
+                    id="comp-video-buddi"
+                    class="comp-video"
+                    src="media/videos/highfive_203708.mp4"
+                    onclick="ZoomImage()"
+                ></video> 
+            </div>
+            
+            <p></p>
+
+            <div class="teaser-container-click">
+                <!-- Add 10 images with unique IDs and onclick events -->
+                <img class="teaser-image-click" id="img1" src="media/images/highfive_203708.png" alt="Image 1" onclick="updateCompContainer('highfive_203708')">
+                <img class="teaser-image-click" id="img2" src="media/images/persons_7873.png" alt="Image 2" onclick="updateCompContainer('persons_7873')">
+                <img class="teaser-image-click" id="img3" src="media/images/love_41423.png" alt="Image 1" onclick="updateCompContainer('love_41423')">
+                <img class="teaser-image-click" id="img4" src="media/images/highfive_459334.png" alt="Image 2" onclick="updateCompContainer('highfive_459334')">
+                <img class="teaser-image-click" id="img5" src="media/images/friends_519627.png" alt="Image 1" onclick="updateCompContainer('friends_519627')">
+                <img class="teaser-image-click" id="img6" src="media/images/highfive_127731.png" alt="Image 2" onclick="updateCompContainer('highfive_127731')">
+                <img class="teaser-image-click" id="img4" src="media/images/Hug_1074.png" alt="Image 2" onclick="updateCompContainer('Hug_1074')">
+                <img class="teaser-image-click" id="img5" src="media/images/People_335462.png" alt="Image 1" onclick="updateCompContainer('People_335462')">
+                <img class="teaser-image-click" id="img6" src="media/images/excited_15308.png" alt="Image 2" onclick="updateCompContainer('excited_15308')">
+                <img class="teaser-image-click" id="img6" src="media/images/friends_347546.png" alt="Image 2" onclick="updateCompContainer('friends_347546')">
+                <!-- Add 8 more images with similar structure -->
+            </div>            
+            <p></p>
+            <div class="teaser-container-click">
+                <!-- Add 10 images with unique IDs and onclick events -->
+                <img class="teaser-image-click" id="img1" src="media/images/Dance_7721.png" alt="Image 1" onclick="updateCompContainer('Dance_7721')">
+                <img class="teaser-image-click" id="img2" src="media/images/People_352214.png" alt="Image 2" onclick="updateCompContainer('People_352214')">
+                <img class="teaser-image-click" id="img3" src="media/images/friends_394638.png" alt="Image 1" onclick="updateCompContainer('friends_394638')">
+                <img class="teaser-image-click" id="img4" src="media/images/highfive_117471.png" alt="Image 2" onclick="updateCompContainer('highfive_117471')">
+                <img class="teaser-image-click" id="img5" src="media/images/journey_58.png" alt="Image 1" onclick="updateCompContainer('journey_58')">
+                <img class="teaser-image-click" id="img6" src="media/images/People_751835.png" alt="Image 2" onclick="updateCompContainer('People_751835')">
+                <img class="teaser-image-click" id="img4" src="media/images/friends_519627.png" alt="Image 2" onclick="updateCompContainer('friends_519627')">
+                <img class="teaser-image-click" id="img5" src="media/images/friends_388574.png" alt="Image 1" onclick="updateCompContainer('friends_388574')">
+                <img class="teaser-image-click" id="img6" src="media/images/love_175948.png" alt="Image 2" onclick="updateCompContainer('love_175948')">
+                <img class="teaser-image-click" id="img6" src="media/images/highfive_136078.png" alt="Image 2" onclick="updateCompContainer('highfive_136078')">
+                <!-- Add 8 more images with similar structure -->
+            </div>     
+            <p></p>
             <p class="text-justify"> 
-                To use BUDDI as a prior in optimization, we adopt the SDS loss presented in previous work like DreamFusion. When fitting SMPL-X to image keypoints, 
+                    We compare BUDDI to <a href="http://www.yusun.work/BEV/BEV.html">BEV</a> [SUN et al., CVPR 2022], a recent human mesh regressor that estimated the 3D pose and shape of multiple people in the world coordinate system. The predicted spacial positioning is often correct, but BEV fails to reconstruct contact and subtle detail. BUDDI addresses this problem by a two-step approach and is able to reconstruct more relistic interaction and social proxemics, also for complex poses like hugs, piggy backs, or with arms interlinked.
+                    <b>Click on renderings to zoom</b>.
+            </p>
+        </div>
+    </div>
+
+    <div class="row mb-3 pt-2"style="margin-top: 50px;">
+        <div class="col-md-10 mx-auto">
+            <h4>How does BUDDI work?</h4><p></p>
+
+            <div class="col-md-10 mx-auto">
+                <video playsinline loop muted
+                class="lazyload"
+                preload="none"
+                data-autoplay=""
+                src="media/method_twostep.m4v"
+                width="100%"
+            ></video></div> 
+            We take a two-step appraoch, where in the first stage we train a generative model that learns a 3D generative model of two people in close social 
+            interaction. In the second step we use this model as prior during optimization.
+            
+            <p> </p>
+            <div class="col-md-10 mx-auto">
+                <video playsinline loop muted
+                class="lazyload"
+                preload="none"
+                data-autoplay=""
+                src="media/buddi_arch.m4v"
+                width="100%"
+            ></video></div> 
+            <p class="text-justify">
+                BUDDI directly operates on SMPL-X parameters through a transformer backbone and is trained on a collection of 
+                SMPL-X fits to <a href="https://ci3d.imar.ro/flickrci3d">Flickr images</a> and some data from two motion capture datasets, <a href="https://yifeiyin04.github.io/Hi4D/">Hi4D</a> and <a href=https://ci3d.imar.ro/chi3d">CHI3D</a>. 
+                The model can be used to generate unconditional samples of two people in close proximity.  
+                We further train our model to take conditioning from a recent multi-person mesh regressor <a href="http://www.yusun.work/BEV/BEV.html">BEV<a>. The estimated BEV parameters are concatenated along the token dimension with the diffused SMPL-X parameters. 
+                </p>
+
+                <div class="col-md-10 mx-auto">
+                    <img playsinline loop muted
+                    class="lazyload"
+                    preload="none"
+                    data-autoplay=""
+                    src="media/buddioptimization.png"
+                    width="100%"
+                ></img></div>
+
+            <p class="text-justify">  
+                The conditional model can be used as a social prior in the 
+                downstream optimization task of reconstructing 3D people in close proximity from images, without any extra annotation such as contact maps. We initialize the optimization routine with a sample BUDDI given the BEV estimate and use standard fitting losses to minimize the 2D re-projection error, a loss term to resolve intersections between the two people, and a term to stay close to the initial sample.
+            </p>
+
+            <!-- <div class="col-md-10 mx-auto">
+                <img playsinline loop muted
+                class="lazyload"
+                preload="none"
+                data-autoplay=""
+                src="media/loss_fitting.png"
+                width="100%"
+            ></img></div> -->
+            <div class="col-md-10 mx-auto">
+                <img playsinline loop muted
+                class="lazyload"
+                preload="none"
+                data-autoplay=""
+                src="media/loss_diffusion1.png"
+                width="100%"
+            ></img></div>
+            <p class="text-justify"> 
+                To use BUDDI as a prior in optimization, we adopt the SDS loss presented in previous work like  <a href="https://dreamfusion3d.github.io">DreamFusion</a> (L diffusion). When fitting SMPL-X to image keypoints, 
                 in each optimization iteration, we diffuse the current estimate diffuse it and let BUDDI propose a refined estimate. The refined estimate is 
                 closer to the true distribution of interacting people and serves as prior via an L2-Loss. This enables us to fit 3D meshes to images of closely 
                 interacting people without replying on ground-truth contact annotations at test time.
@@ -458,7 +444,24 @@
     </div>
 
 
-    <div class="row mb-4">
+    <div class="row mb-3 pt-2" id="dataSection">
+        <div class="col-md-10 mx-auto">
+            <h4>Training Data - Flickr Fits</h4>
+
+            <img 
+            src="media/flickr_fits.png"
+            width=100%;
+            ></img>
+
+
+            <p class="text-justify">
+	        To create training data for BUDDI, we fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D Signatures</a>, a dataset of images
+            collected from Flickr with ground-truth c3D contact annotations. We show sample images from this dataset with the contact map visulaized on the left and our Flickr fits on the right. See our <a href="https://github.com/muelea/buddi">GitHub</a> repo for more information about the training data.
+            </p>
+        </div>
+    </div>
+
+    <div class="row mb-4" id="bibtexSection">
         <div class="col-md-10 mx-auto">
             <h4>BibTeX</h4>
             <textarea id="bibtex" class="form-control" readonly>
@@ -478,6 +481,7 @@
         </div>
     </div>
     -->
+    
 </div>
 
 <!-- Laxy loadingi https://github.com/aFarkas/lazysizes -->
@@ -504,3 +508,63 @@
         infinite: true,
     });
 </script>
+
+<script>
+
+    function updateContainer(newImageSrc) {
+      // Get the video container
+      const teaserContainer = document.getElementById('teaser-container');
+      
+      const imgContainer = document.getElementById('teaser-image');
+      const videoContainer = document.getElementById('teaser-video');     
+      const imgoverlayContainer = document.getElementById('teaser-image-overlay');
+
+      teaserContainer.style.visibility = "hidden";
+
+      videoContainer.src = `media/videos/${newImageSrc}.mp4`;
+      imgContainer.src = `media/images/${newImageSrc}.png`;
+      imgoverlayContainer.src = `media/images/${newImageSrc}_overlay.png`;
+      
+      teaserContainer.style.visibility = "visible";
+    }
+  </script>
+
+<script>
+
+    function updateCompContainer(newImageSrc) {
+      // Get the video container
+      const teaserContainer = document.getElementById('comp-container');
+      
+      const imgContainer = document.getElementById('comp-image');
+      const videoContainerbev = document.getElementById('comp-video-bev');     
+      const videoContainerbuddi = document.getElementById('comp-video-buddi');
+
+      teaserContainer.style.visibility = "hidden";
+
+      videoContainerbev.src = `media/videos_bev/${newImageSrc}.mp4`;
+      imgContainer.src = `media/images/${newImageSrc}.png`;
+      videoContainerbuddi.src = `media/videos/${newImageSrc}.mp4`;
+      
+      teaserContainer.style.visibility = "visible";
+    }
+  </script>
+
+<script>
+    function ZoomImage() {
+      // Get the video container
+      
+      const videoContainerbev = document.getElementById('comp-video-bev');     
+      const videoContainerbuddi = document.getElementById('comp-video-buddi');
+
+      const bevsrc = videoContainerbev.src
+      const buddisrc = videoContainerbuddi.src  
+
+      if (bevsrc.includes('_zoom')) {
+        videoContainerbev.src = bevsrc.replace('_zoom.mp4', '.mp4');
+        videoContainerbuddi.src = buddisrc.replace('_zoom.mp4', '.mp4');
+      } else {
+        videoContainerbev.src = bevsrc.replace('.mp4', '_zoom.mp4');
+        videoContainerbuddi.src = buddisrc.replace('.mp4', '_zoom.mp4');
+      }
+    }
+  </script>
