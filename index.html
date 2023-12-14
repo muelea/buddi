@@ -106,7 +106,7 @@
                 </li>
 
                 <li class="list-inline-item">
-			<a href="https://ps.is.mpg.de/person/black">Michael Black<sup>2</sup></a>
+			<a href="https://ps.is.mpg.de/person/black">Michael Black<sup>1</sup></a>
                 </li>
 
                 <li class="list-inline-item">
@@ -251,7 +251,7 @@
         <div class="col-md-10 mx-auto">
             <p class="text-justify">
                 <b>
-                    Our method estimates the poses of two people in close social interaction. We first train a generative model that learns the joint distribution of two interacting people.
+                    Our method takes a single image and estimates the poses of two people in close social interaction. We first train a generative model that learns the joint distribution of two interacting people.
                     Then we use this model as prior during optimization when fitting two SMPL-X body models to detected 2D joint locations.
                 </b>
             </p>
@@ -300,7 +300,7 @@
                     ></video> 
                 </div>
                 <p class="text-justify">
-                    BUDDI is a diffusion model that learned the joint distribution of two people in close proxeminty. 
+                    BUDDI is a diffusion model that is trained to model the joint distribution of two people in close proximity.
                     It directly generates SMPL-X body model parameters for two people, starting from random noise.
                 </p>
         </div>
@@ -309,7 +309,7 @@
     
     <div class="row mb-3 pt-2">
         <div class="col-md-10 mx-auto">
-            <h4>Comparison against BEV (right) vs. <i>Optimization with BUDDI</i> (left)</h4>
+            <h4>Comparison with BEV (left) vs. <i>Optimization with BUDDI</i> (right)</h4>
 
             <div class="comp-container" id="comp-container" style="visibility: none">
                 
@@ -368,7 +368,7 @@
             </div>     
             <p></p>
             <p class="text-justify"> 
-                    We compare BUDDI to <a href="http://www.yusun.work/BEV/BEV.html">BEV</a> [SUN et al., CVPR 2022], a recent human mesh regressor that estimated the 3D pose and shape of multiple people in the world coordinate system. The predicted spacial positioning is often correct, but BEV fails to reconstruct contact and subtle detail. BUDDI addresses this problem by a two-step approach and is able to reconstruct more relistic interaction and social proxemics, also for complex poses like hugs, piggy backs, or with arms interlinked.
+                    We compare BUDDI to <a href="http://www.yusun.work/BEV/BEV.html">BEV</a> [SUN et al., CVPR 2022], a recent human mesh regressor that estimates the 3D pose and shape of multiple people in the world coordinate system. The predicted spacial positioning is often correct, but BEV fails to reconstruct contact and subtle detail. BUDDI addresses this problem by a two-step approach and is able to reconstruct more relistic interaction and social proxemics, also for complex poses like hugs, piggy backs, or with arms interlinked.
                     <b>Click on renderings to zoom</b>.
             </p>
         </div>
@@ -386,8 +386,7 @@
                 src="media/method_twostep.m4v"
                 width="100%"
             ></video></div> 
-            We take a two-step appraoch, where in the first stage we train a generative model that learns a 3D generative model of two people in close social 
-            interaction. In the second step we use this model as prior during optimization.
+            We take a two-step approach, where, in the first stage, we train a model to generate the 3D meshes of two people in close social interaction. In the second step, we use this model as prior during optimization.
             
             <p> </p>
             <div class="col-md-10 mx-auto">
@@ -416,7 +415,7 @@
 
             <p class="text-justify">  
                 The conditional model can be used as a social prior in the 
-                downstream optimization task of reconstructing 3D people in close proximity from images, without any extra annotation such as contact maps. We initialize the optimization routine with a sample BUDDI given the BEV estimate and use standard fitting losses to minimize the 2D re-projection error, a loss term to resolve intersections between the two people, and a term to stay close to the initial sample.
+                downstream optimization task of reconstructing 3D people in close proximity from images, without any extra annotation such as contact maps. We initialize the optimization routine with a sample from BUDDI given the BEV estimate and use standard fitting losses to minimize the 2D re-projection error, a loss term to resolve intersections between the two people, and a term to stay close to the initial sample.
             </p>
 
             <!-- <div class="col-md-10 mx-auto">
@@ -437,9 +436,9 @@
             ></img></div>
             <p class="text-justify"> 
                 To use BUDDI as a prior in optimization, we adopt the SDS loss presented in previous work like  <a href="https://dreamfusion3d.github.io">DreamFusion</a> (L diffusion). When fitting SMPL-X to image keypoints, 
-                in each optimization iteration, we diffuse the current estimate diffuse it and let BUDDI propose a refined estimate. The refined estimate is 
-                closer to the true distribution of interacting people and serves as prior via an L2-Loss. This enables us to fit 3D meshes to images of closely 
-                interacting people without replying on ground-truth contact annotations at test time.
+                in each optimization iteration, we take the current estimate diffuse it and let BUDDI propose a refined estimate. The refined estimate is 
+                more likely under the true distribution of interacting people and serves as prior via an L2-Loss. This enables us to fit 3D meshes to images of closely 
+                interacting people without relying on ground-truth contact annotations at test time.
             </p>
         </div>
     </div>
@@ -457,7 +456,7 @@
 
             <p class="text-justify">
 	        To create training data for BUDDI, we fit SMPL-X meshes to <a href="https://ci3d.imar.ro">FlickrCI3D Signatures</a>, a dataset of images
-            collected from Flickr with ground-truth c3D contact annotations. We show sample images from this dataset with the contact map visulaized on the left and our Flickr fits on the right. See our <a href="https://github.com/muelea/buddi">GitHub</a> repo for more information about the training data.
+            collected from Flickr with ground-truth 3D annotations indicating binary pairwise contact between regions of the human body between two people. We show sample images from this dataset with the contact map visulaized on the left and our Flickr fits on the right. See our <a href="https://github.com/muelea/buddi">GitHub</a> repo for more information about the training data.
             </p>
         </div>
     </div>
@@ -467,9 +466,9 @@
             <h4>BibTeX</h4>
             <textarea id="bibtex" class="form-control" readonly>
                 @article{mueller2023buddi,
-                    title={Generative Proxemics: A Prior for 3D Social Interaction from Images}
-                    author={M{\“u}ller, Lea and Ye, Vickie and Pavlakos, Georgios and Black, Michael and Kanazawa, Angjoo},
-                    journal={arXiv preprint 2306.09337v1}
+                    title={Generative Proxemics: A Prior for {3D} Social Interaction from Images},
+                    author={M{\“u}ller, Lea and Ye, Vickie and Pavlakos, Georgios and Black, Michael J. and Kanazawa, Angjoo},
+                    journal={arXiv preprint 2306.09337v1},
                     year={2023}}
             </textarea>
         </div>
