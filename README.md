@@ -32,7 +32,11 @@ Please see [Dataset](./documentation/DATA.md) for details.
 
 ### Unconditional sampling
 
-![sampling_teaser](documentation/gifs/teaser_4.png)
+
+
+https://github.com/muelea/buddi/assets/13314980/ac93baf2-750e-4223-b9eb-2422004e972c
+
+
 
 Unconditional generation stating from random noise using different sampling schedules
 
@@ -43,9 +47,15 @@ python llib/methods/hhc_diffusion/evaluation/sample.py --exp-cfg essentials/budd
 
 
 
-### Optimization with BUDDI
+### Optimization with BUDDI trained with BEV conditioning
 
-![opti_teaser](documentation/gifs/teaser_2.png)
+
+
+
+https://github.com/muelea/buddi/assets/13314980/89d6a7de-e907-46ac-83c5-321174ca0eba
+
+
+
 
 Run optimization using BUDDI as prior. This script will find all OpenPose Bounding boxes on a photo and run Optimization with BUDDI for all pairs of people who overlap on the picture.
 ```
