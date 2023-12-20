@@ -58,15 +58,16 @@ class HHCOptiLoss(nn.Module):
 
             setattr(self, name + '_weight', weight[weight_stage])
 
-    def get_keypoint2d_loss(self, init, projected_joints, bs, num_joints, device):
+    def get_keypoint2d_loss(self, vitpose, openpose, init_bev, est_joints, bs, num_joints, device):
         """Some keypoint processing to merge OpenPose and ViTPose keypoints."""
         
-        gt_keypoints = init['vitpose_keypoints'].unsqueeze(0).to(device)
-        op_keypoints = init['op_keypoints'].unsqueeze(0).to(device)
+        gt_keypoints = vitpose #init['vitpose_keypoints'].unsqueeze(0).to(device)
+        op_keypoints = openpose #init['op_keypoints'].unsqueeze(0).to(device)
         bs, nk, _ = gt_keypoints.shape
 
         # add openpose foot tip (missing in vitpose)
         ankle_joint = [11, 14]
+        """
         ankle_thres = 5.0
         right_ankle_residual = torch.sum((gt_keypoints[:,11,:] - op_keypoints[:,11,:])**2)
         if right_ankle_residual < ankle_thres:
@@ -74,14 +75,18 @@ class HHCOptiLoss(nn.Module):
         left_ankle_residual = torch.sum((gt_keypoints[:,14,:] - op_keypoints[:,14,:])**2)
         if left_ankle_residual < ankle_thres:
             gt_keypoints[:,19,:] = op_keypoints[:,19,:]
+        """
 
-        # use initial keypoints if vit is missing 
+        # use initial (BEV) keypoints if detected ankle joints are missing/low confidence (e.g. when image is cropped)
         mask_init = (gt_keypoints < .2)[0,:,2]
-        init_keypoints = torch.cat([init['init_keypoints'].double(), 0.5 * torch.ones(bs, nk, 1).to(device)], dim=-1)
+        init_bev = init_bev # init['init_keypoints'] 
+        init_keypoints = torch.cat([init_bev.double(), 0.5 * torch.ones(bs, nk, 1).to(device)], dim=-1)
         if mask_init[ankle_joint[0]] == 1:
             gt_keypoints[:,ankle_joint[0],:] = init_keypoints[:,ankle_joint[0],:]
+            gt_keypoints[:,22:25,:] = init_keypoints[:,22:25,:]
         if mask_init[ankle_joint[1]] == 1:
             gt_keypoints[:,ankle_joint[1],:] = init_keypoints[:,ankle_joint[1],:]
+            gt_keypoints[:,19:22,:] = init_keypoints[:,19:22,:]
 
         if gt_keypoints.shape[-1] == 3:
             gt_keypoints_conf = gt_keypoints[:, :, 2]
@@ -96,7 +101,7 @@ class HHCOptiLoss(nn.Module):
         xmax, ymax = valid_kpts.max(0)[0]
         bbox_size = max(ymax-ymin, xmax-xmin)
         gt_keypoints_vals = gt_keypoints_vals / bbox_size * 512
-        projected_joints = projected_joints / bbox_size * 512
+        est_joints = est_joints / bbox_size * 512
 
         # robistify keypoints
         #residual = (gt_keypoints_vals - projected_joints) ** 2
@@ -105,9 +110,9 @@ class HHCOptiLoss(nn.Module):
         #                torch.div(residual, residual + rho)
         #keypoint2d_loss = torch.mean(robust_residual) * self.keypoint2d_weight
 
-        # comput keypoint loss 
+        # comput keypoint loss
         keypoint2d_loss = self.keypoint2d_crit(
-            gt_keypoints_vals, projected_joints, gt_keypoints_conf
+            gt_keypoints_vals, est_joints, gt_keypoints_conf
         ) * self.keypoint2d_weight
 
         return keypoint2d_loss
@@ -122,8 +127,7 @@ class HHCOptiLoss(nn.Module):
             pose)) * self.pose_prior_weight
         return pose_prior_loss
 
-    def get_init_pose_loss(self, init, est_body_pose, device):
-        init_pose = init['body_pose'].to(device)
+    def get_init_pose_loss(self, init_pose, est_body_pose, device):
         
         if len(init_pose.shape) == 1:
             init_pose = init_pose.unsqueeze(0)
@@ -134,13 +138,18 @@ class HHCOptiLoss(nn.Module):
 
         return init_pose_prior_loss
 
-    def get_init_shape_loss(self, init, est_shape, device):
-        init_shape = init['betas'].unsqueeze(0).to(device)
+    def get_init_shape_loss(self, init_shape, est_shape, device):
         init_shape_loss = self.init_pose_crit(
             init_shape, est_shape
             ) * self.init_shape_weight
         return init_shape_loss
 
+    def get_init_transl_loss(self, init_transl, est_transl, device):
+        init_transl_loss = self.init_pose_crit(
+            init_transl, est_transl
+            ) * self.init_transl_weight
+        return init_transl_loss
+    
     def get_hhc_contact_loss(self, contact_map, vertices_h1, vertices_h2):
        
         hhc_contact_loss = self.hhc_contact_crit(
@@ -226,6 +235,7 @@ class HHCOptiLoss(nn.Module):
         t, # noise level
         smpl_output_h1, # the current estimate of person a
         smpl_output_h2, # the current estimate of person b
+        guidance_params={}, # the initial estimate of person a and b
     ):
         """The SDS loss or L_diffusion as we define it in the paper"""
 
@@ -235,28 +245,45 @@ class HHCOptiLoss(nn.Module):
         # take the current estimate of the optimization
         x_start_smpls = [smpl_output_h1, smpl_output_h2]
 
+        # fix because optimization data loader does not do the flipping anymore
+        #if smpl_output_h1.transl[0,0] > smpl_output_h2.transl[0,0]:
+        #    x_start_smpls = [smpl_output_h2, smpl_output_h1]
+
+        dbs = diffusion_module.bs
+
         # Run a diffuse-denoise step. To do this, we use torch.no_grad() to
         # ensure that the gradients are not propagated through the diffusion
         with torch.no_grad():
             # first, we need to transform the current estimate of the optimization to 
             # BUDDI's format
-            init_rotation =  axis_angle_to_matrix(x_start_smpls[0].global_orient).detach().clone().repeat(64, 1, 1)
-            init_transl =  x_start_smpls[0].transl.detach().clone().repeat(64, 1, 1)
+            init_rotation =  axis_angle_to_matrix(x_start_smpls[0].global_orient).detach().clone().repeat(dbs, 1, 1)
+            init_transl =  x_start_smpls[0].transl.detach().clone().repeat(dbs, 1, 1)
             x = {
                 'orient': torch.cat([
                     axis_angle_to_rotation6d(x_start_smpls[0].global_orient.unsqueeze(1)), 
-                    axis_angle_to_rotation6d(x_start_smpls[1].global_orient.unsqueeze(1))], dim=1).repeat(64, 1, 1),
+                    axis_angle_to_rotation6d(x_start_smpls[1].global_orient.unsqueeze(1))], dim=1).repeat(dbs, 1, 1),
                 'pose': torch.cat([
                     axis_angle_to_rotation6d(x_start_smpls[0].body_pose.unsqueeze(1).view(1, 1, -1, 3)).view(1, 1, -1), 
-                    axis_angle_to_rotation6d(x_start_smpls[1].body_pose.unsqueeze(1).view(1, 1, -1, 3)).view(1, 1, -1)], dim=1).repeat(64, 1, 1),
+                    axis_angle_to_rotation6d(x_start_smpls[1].body_pose.unsqueeze(1).view(1, 1, -1, 3)).view(1, 1, -1)], dim=1).repeat(dbs, 1, 1),
                 'shape': torch.cat([
                     torch.cat((x_start_smpls[0].betas, x_start_smpls[0].scale), dim=-1).unsqueeze(1),
-                    torch.cat((x_start_smpls[1].betas, x_start_smpls[1].scale), dim=-1).unsqueeze(1)], dim=1).repeat(64, 1, 1),
+                    torch.cat((x_start_smpls[1].betas, x_start_smpls[1].scale), dim=-1).unsqueeze(1)], dim=1).repeat(dbs, 1, 1),
                 'transl': torch.cat([
                     x_start_smpls[0].transl.unsqueeze(1), 
-                    x_start_smpls[1].transl.unsqueeze(1)], dim=1).repeat(64, 1, 1)
+                    x_start_smpls[1].transl.unsqueeze(1)], dim=1).repeat(dbs, 1, 1)
             }
-            guidance_params = {} # no guidance params are used here
+
+            # if len(diffusion_module.exp_cfg.guidance_params) > 0:
+            #     guidance_params = {
+            #         'orient': init_human['global_orient'].unsqueeze(0).repeat(dbs, 1, 1),
+            #         'pose': init_human['body_pose'].unsqueeze(0).repeat(dbs, 1, 1),
+            #         'shape': torch.cat((init_human['betas'], init_human['scale'].unsqueeze(1)), dim=-1).unsqueeze(0).repeat(dbs, 1, 1),
+            #         'transl': init_human['transl'].unsqueeze(0).repeat(dbs, 1, 1)
+            #     }
+            #     guidance_params = diffusion_module.cast_smpl(guidance_params)
+            #     guidance_params = diffusion_module.split_humans(guidance_params)
+            # else:
+            #     guidance_params = {} # no guidance params are used here
             x = diffusion_module.reset_orient_and_transl(x) # use relative translation
 
             # run the diffusion (diffuse parameters and use BUDDI to denoise them)
@@ -268,23 +295,22 @@ class HHCOptiLoss(nn.Module):
             new_orient, new_transl = self.undo_orient_and_transl(
                 diffusion_module, denoised_smpls, init_rotation, init_transl)
             x_end_smpls = diffusion_module.get_smpl({
-                'orient': axis_angle_to_rotation6d(new_orient).repeat(64, 1, 1),
+                'orient': axis_angle_to_rotation6d(new_orient).repeat(dbs, 1, 1),
                 'pose': torch.cat([
-                    axis_angle_to_rotation6d(denoised_smpls[0].body_pose.view(64,-1,3)).unsqueeze(1), 
-                    axis_angle_to_rotation6d(denoised_smpls[1].body_pose.view(64,-1,3)).unsqueeze(1)], dim=1), 
+                    axis_angle_to_rotation6d(denoised_smpls[0].body_pose.view(dbs,-1,3)).unsqueeze(1), 
+                    axis_angle_to_rotation6d(denoised_smpls[1].body_pose.view(dbs,-1,3)).unsqueeze(1)], dim=1), 
                 'shape': torch.cat([
                     torch.cat((denoised_smpls[0].betas, denoised_smpls[0].scale), dim=-1).unsqueeze(1),
                     torch.cat((denoised_smpls[1].betas, denoised_smpls[1].scale), dim=-1).unsqueeze(1)], dim=1), 
-                'transl': new_transl.repeat(64, 1, 1)
+                'transl': new_transl.repeat(dbs, 1, 1)
             })
-        
 
         # Regularize the orientation and pose of the two people
         if self.diffusion_prior_orient_weight > 0:
             ld['regularize_h_0_orient'] = self.diffusion_prior_orient_weight * \
-                torch.norm(x_start_smpls[0].orient[[0]] - x_end_smpls[0].orient[[0]].detach())
+                torch.norm(x_start_smpls[0].global_orient[[0]] - x_end_smpls[0].global_orient[[0]].detach())
             ld['regularize_h_1_orient'] = self.diffusion_prior_orient_weight * \
-                torch.norm(x_start_smpls[1].orient[[0]] - x_end_smpls[1].orient[[0]].detach())
+                torch.norm(x_start_smpls[1].global_orient[[0]] - x_end_smpls[1].global_orient[[0]].detach())
 
         # Regularize the pose of the two people
         if self.diffusion_prior_pose_weight > 0:
@@ -338,8 +364,9 @@ class HHCOptiLoss(nn.Module):
         smpl_output_h1, # the current estimate of person a
         smpl_output_h2, # the current estimate of person b
         camera, # camera
-        init_h1, # the initail estimate of person a (from BEV) 
-        init_h2, # the initail estimate of person b (from BEV)
+        #init_h1, # the initial estimate of person a (from BEV) 
+        #init_h2, # the initial estimate of person b (from BEV)
+        init_human, # the initial estimate of person a and b 
         init_camera, # BEV camera
         contact_map, # the contact map between the two people
     ):  
@@ -348,8 +375,8 @@ class HHCOptiLoss(nn.Module):
 
         ld = {} # store losses in dict for printing
 
-        init_h1_betas = init_h1['betas'].unsqueeze(0).to(device)
-        init_h2_betas = init_h2['betas'].unsqueeze(0).to(device)
+        #init_h1_betas = init_h1['betas'].unsqueeze(0).to(device)
+        #init_h2_betas = init_h2['betas'].unsqueeze(0).to(device)
 
         # project 3D joinst to 2D
         projected_joints_h1 = camera.project(smpl_output_h1.joints)
@@ -359,9 +386,15 @@ class HHCOptiLoss(nn.Module):
         ld['keypoint2d_losses'] = 0.0
         if self.keypoint2d_weight > 0:
             ld['keypoint2d_losses'] += self.get_keypoint2d_loss(
-                init_h1, projected_joints_h1, bs, num_joints, device)
+                init_human['keypoints'][[0]],
+                init_human['op_keypoints'][[0]], 
+                init_human['init_keypoints'][[0]],  
+                projected_joints_h1, bs, num_joints, device)
             ld['keypoint2d_losses'] += self.get_keypoint2d_loss(
-                init_h2, projected_joints_h2, bs, num_joints, device)
+                init_human['keypoints'][[1]],
+                init_human['op_keypoints'][[1]], 
+                init_human['init_keypoints'][[1]],  
+                projected_joints_h2, bs, num_joints, device)
 
         # shape prior loss
         ld['shape_prior_loss'] = 0.0
@@ -383,18 +416,26 @@ class HHCOptiLoss(nn.Module):
         ld['init_pose_losses'] = 0.0
         if self.init_pose_weight > 0:
             ld['init_pose_losses'] += self.get_init_pose_loss(
-                init_h1, smpl_output_h1.body_pose, device)
+                init_human['body_pose'][[0]], smpl_output_h1.body_pose, device)
             ld['init_pose_losses'] += self.get_init_pose_loss(
-                init_h2, smpl_output_h2.body_pose, device)
+                init_human['body_pose'][[1]], smpl_output_h2.body_pose, device)
 
         # shape prior losses for each human
         ld['init_shape_losses'] = 0.0
         if self.init_shape_weight > 0:
             ld['init_shape_losses'] += self.get_init_shape_loss(
-                init_h1, smpl_output_h1.betas, device)
+                init_human['betas'][[0]], smpl_output_h1.betas, device)
             ld['init_shape_losses'] += self.get_init_shape_loss(
-                init_h2, smpl_output_h2.betas, device)
+                init_human['betas'][[1]], smpl_output_h2.betas, device)
 
+        # shape prior losses for each human
+        ld['init_transl_losses'] = 0.0
+        if self.init_transl_weight > 0:
+            ld['init_transl_losses'] += self.get_init_transl_loss(
+                init_human['transl'][[0]], smpl_output_h1.transl, device)
+            ld['init_transl_losses'] += self.get_init_transl_loss(
+                init_human['transl'][[1]], smpl_output_h2.transl, device)
+        
         # contact loss between two humans
         ld['hhc_contact_loss'] = 0.0
         if self.hhc_contact_weight:
@@ -431,13 +472,15 @@ class HHCOptiLoss(nn.Module):
         smpl_output_h1, 
         smpl_output_h2,
         camera,
-        init_h1, 
-        init_h2,
+        #init_h1, 
+        #init_h2,
+        init_human,
         init_camera,
         contact_map,
         use_diffusion_prior=False,
         diffusion_module=None,
         t=None,
+        guidance_params={},
     ): 
         """
         Compute all losses in the current optimization iteration.
@@ -451,8 +494,9 @@ class HHCOptiLoss(nn.Module):
             smpl_output_h1, 
             smpl_output_h2,
             camera,
-            init_h1, 
-            init_h2,
+            #init_h1, 
+            #init_h2,
+            init_human,
             init_camera,
             contact_map
         )
@@ -464,6 +508,7 @@ class HHCOptiLoss(nn.Module):
                 t,
                 smpl_output_h1, 
                 smpl_output_h2,
+                guidance_params, # for bev conditioning
             )
 
         # update loss dict and sum up losses

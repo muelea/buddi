@@ -38,6 +38,7 @@ class Datasets:
     flickrci3ds_child: FlickrCI3D_Signatures = FlickrCI3D_Signatures(child_only=True)
     flickrci3dc: FlickrCI3D_Classification = FlickrCI3D_Classification()
     chi3d: CHI3D = CHI3D()
+    hi4d: HI4D = HI4D()
     demo: Demo = Demo()
 
 

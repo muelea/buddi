@@ -9,7 +9,6 @@ from .smplh import SMPLHinit, SMPLH
 @dataclass 
 class SMPLXinit(SMPLHinit):
     ext: str = 'npz'
-    use_face_contour: bool = False
     hand_vertex_ids_path: str = ''
     expression: Expression = Expression()
     jaw_pose: Jaw = Jaw()

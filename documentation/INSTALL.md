@@ -1,20 +1,33 @@
 ## Quick start
-- You need [SMPL-X](https://smpl-x.is.tue.mpg.de), [SMPL-A](https://github.com/Arthur151/ROMP#news), and [SMIL](https://www.iosb.fraunhofer.de/en/competences/image-exploitation/object-recognition/sensor-networks/motion-analysis.html).
+- You need [SMPL-X](https://smpl-x.is.tue.mpg.de), [SMPL](https://smpl-x.is.tue.mpg.de), [SMPL-A](https://github.com/Arthur151/ROMP#news), [SMIL](https://www.iosb.fraunhofer.de/en/competences/image-exploitation/object-recognition/sensor-networks/motion-analysis.html). The SMIL-X Kid Template can be found on tha [AGORA](https://agora.is.tue.mpg.de) website.
 - Note that SMPL-X, SMIL, and SMPL-A underlie different licences (not MIT)
-- Download each model from the website and extract data to $SMPL_FOLDER. Then symlink $SMPL_FOLDER to essentials: `ln -s $SMPL_FOLDER $REPO_ROOT/essentials/body_models`. The output should look like this:
-    ```bash
-    ├── $REPO_ROOT
-    │   ├── essentials
-    │   │   ├── body_models
-    │   │   │   ├── smil
-    │   │   │   │   ├── smil_packed_info.pth
-    │   │   │   │   ├── smplx_kid_template.npy
-    │   │   │   ├── smplx
-    │   │   │   │   ├── SMPLX_NEUTRAL.npz
-    │   │   │   │   ├── SMPLX_NEUTRAL.pkl
-    │   │   │   ├── smpla
-    │   │   │   │   ├── SMPLA_NEUTRAL.pth
-    ```
+- Download each model from the website and extract data to $SMPL_FOLDER. Then symlink $SMPL_FOLDER to essentials: `ln -s $SMPL_FOLDER $REPO_ROOT/essentials/body_models`. 
+
+- Then run follow the instructions here to generate the body model files used [BEV](https://github.com/Arthur151/ROMP/blob/master/simple_romp/README.md#installation).
+```
+# generate SMPLA_NEUTRAL.pth and smil_packed_info.pth
+romp.prepare_smpl -source_dir=/path/to/smpl_model_data
+bev.prepare_smil -source_dir=/path/to/smpl_model_data
+```
+
+The output should look like this:
+```bash
+├── $REPO_ROOT
+│   ├── essentials
+│   │   ├── body_models
+│   │   │   ├── smil
+│   │   │   |   ├── smil_web.pkl
+│   │   │   │   ├── smil_packed_info.pth
+│   │   │   │   ├── smplx_kid_template.npy
+│   │   │   ├── smpl
+│   │   │   │   ├── SMPL_NEUTRAL.pkl
+│   │   │   ├── smplx
+│   │   │   │   ├── SMPLX_NEUTRAL.npz
+│   │   │   │   ├── SMPLX_NEUTRAL.pkl
+│   │   │   ├── smpla
+│   │   │   │   ├── SMPLA_NEUTRAL.pth
+```
+
 
 - Clone [imar vision tools](https://github.com/sminchisescu-research/imar_vision_datasets_tools.git) repo to `$REPO_ROOT`/essentials:
     ```
@@ -28,7 +41,7 @@
     
 ## Essentials
 - You can skip this step if you'll be using install.sh
-- Dowload buddi supporting files from [here](https://www.dropbox.com/scl/fo/tfb2geh22eeprf1rnbhnp/h?dl=0&rlkey=ardm51bvjh8kuoq2lq5dtzip2) and extract them to `$REPO_ROOT`/essentials
+- Dowload buddi supporting files from [here](https://www.dropbox.com/scl/fi/jn3r1syak62g7djr0q06d/essentials_new.zip?rlkey=uwdn0g5ug8rlg45izr8dvzqbl&dl=1) and extract them to `$REPO_ROOT`/essentials
     ```bash
     ├── $REPO_ROOT
     │   ├── essentials

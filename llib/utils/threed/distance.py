@@ -57,7 +57,7 @@ class ContactMap(nn.Module):
         self.downsample = True
         if self.downsample:
             np.random.seed(0)
-            self.max_verts_per_region = 40
+            self.max_verts_per_region = 5
 
             random_sample = []
             for idx in range(len(self.rid_to_vid)):

@@ -1,0 +1,11 @@
+renderer:
+  width: 1024
+  height: 1024
+  afov_horizontal: 60
+vid_args:
+  num_poses: 50
+  fps: 6
+  elev_min: 0
+  elev_max: 0
+  num_reps: 2
+  dist: 2

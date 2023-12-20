@@ -1,6 +1,7 @@
 
 from __future__ import division
 
+import os
 import torch
 import os.path as osp
 from torch.utils.data import Dataset
@@ -15,6 +16,9 @@ class SingleOptiDataset(Dataset):
              image_processing,
              split='train',
              body_model_type='smplx',
+             use_hands=False,
+             use_face=False,
+             use_face_contour=False,
         ):
         """
         Base Dataset Class for optimization.
@@ -38,7 +42,8 @@ class SingleOptiDataset(Dataset):
         self.body_model_type = body_model_type
         self.dataset_name = dataset_name
         self.dataset_cfg = dataset_cfg
-        self.split = split 
+        self.split = split
+        self.init_method = 'bev' 
 
         self.num_pose_params = 72
         self.num_shape_params = 10
@@ -46,6 +51,18 @@ class SingleOptiDataset(Dataset):
         self.num_transl_params = 3
         self.num_gt_kpts = 24
         self.num_op_kpts = 25
+
+        self.kpts_idxs = np.arange(0,25)
+        self.use_hands = use_hands
+        self.use_face = use_face
+        self.use_face_contour = use_face_contour
+
+        if use_hands:
+            self.kpts_idxs = np.concatenate([self.kpts_idxs, np.arange(25, 25 + 2 * 21)])
+        if use_face:
+            self.kpts_idxs = np.concatenate([self.kpts_idxs, np.arange(67, 67 + 51)])
+        if use_face_contour:
+            self.kpts_idxs = np.concatenate([self.kpts_idxs, np.arange(67 + 51, 67 + 51 + 17)])
 
         self.dataset_name = dataset_name
         self.dataset_cfg = dataset_cfg
@@ -73,14 +90,22 @@ class SingleOptiDataset(Dataset):
                 **self.dataset_cfg, 
                 split=self.split,
                 body_model_type=self.body_model_type
-            ).load()
+            ).load(
+                load_from_scratch=False,
+                allow_missing_information=True,
+                processed_fn_ext='_optimization.pkl'            
+            )
         elif self.dataset_name == 'chi3d':
             from .preprocess.chi3d import CHI3D
             dataset = CHI3D(
                 **self.dataset_cfg, 
                 split=self.split,
                 body_model_type=self.body_model_type
-            ).load()
+            ).load(
+                load_from_scratch=False, 
+                allow_missing_information=True,
+                processed_fn_ext='_optimization.pkl',
+            )
         elif self.dataset_name == 'demo':
             from .preprocess.demo import Demo
             dataset = Demo(
@@ -88,6 +113,17 @@ class SingleOptiDataset(Dataset):
                 split=self.split,
                 body_model_type=self.body_model_type
             ).load()
+        elif self.dataset_name == 'hi4d':
+            from .preprocess.hi4d import HI4D
+            dataset = HI4D(
+                **self.dataset_cfg, 
+                split=self.split,
+                body_model_type=self.body_model_type
+            ).load(
+                load_from_scratch=False, 
+                allow_missing_information=True,
+                processed_fn_ext='_optimization.pkl',
+            )
         else:
             raise NotImplementedError
             
@@ -103,11 +139,13 @@ class SingleOptiDataset(Dataset):
     def to_tensors(self, target):
         for k, v in target.items():
             if isinstance(v, np.ndarray):
-                target[k] = torch.from_numpy(v)
+                target[k] = torch.from_numpy(v).float()
             elif isinstance(v, list):
-                target[k] = torch.tensor(v)
+                target[k] = torch.tensor(v).float()
             elif isinstance(v, dict):
-                target[k] = self.to_tensors(v)
+                target[k] = self.to_tensors(v).float()
+            elif isinstance(v, torch.Tensor):
+                target[k] = v.float()
         return target
 
 
@@ -116,13 +154,16 @@ class SingleOptiDataset(Dataset):
         item = self.data[index]
 
         # crop image using both bounding boxes
-        h1_bbox, h2_bbox = item[f'bbox_h0'], item[f'bbox_h1']
-        bbox = self.join_bbox(h1_bbox, h2_bbox) if h1_bbox is not None else None
-        # cast bbox to int
-        bbox = np.array(bbox).astype(int)
-        h1_bbox = np.array(h1_bbox).astype(int)
-        h2_bbox = np.array(h2_bbox).astype(int)
+        #h1_bbox, h2_bbox = item[f'bbox_h0'], item[f'bbox_h1']
+        if 'flickr_bbox' in item.keys():
+            bbox = item['flickr_bbox'].astype(int) 
+        else:
+            bbox = np.array([[0,0,0,0], [0,0,0,0]])
         
+        bbox_join = self.join_bbox(bbox[0], bbox[1]) 
+        # cast bbox to int
+        bbox_join = np.array(bbox_join).astype(int)
+
         input_image = [0.0]
         img_height = item['img_height']
         img_width = item['img_width']
@@ -132,23 +173,23 @@ class SingleOptiDataset(Dataset):
         else:
             contact_index = 0
 
-        img_out_fn = item['imgname'].replace('.png', '_') + str(contact_index)
+        if 'img_out_fn' in item.keys():
+            img_out_fn = item['img_out_fn']
+        else:
+            img_out_fn = item['imgname'].replace('.png', '_') + str(contact_index)
+        
         gen_target = {
             'images': input_image,
             'imgpath': item['imgpath'],
             'contact_index': contact_index,
-            'bbox_h0': h1_bbox,
-            'bbox_h1': h2_bbox,
-            'bbox_h0h1': bbox,
+            'bbox': bbox,
+            'bbox_h0h1': bbox_join,
             'imgname_fn': item['imgname'],
             'imgname_fn_out': img_out_fn,
             'img_height': img_height,
             'img_width': img_width,
             'sample_index': index,
         }
-
-        if 'binary_contact' in item.keys():
-            gen_target['binary_contact'] = item['binary_contact']
 
         cam_target = {
             'pitch': np.array(item['cam_rot'][0]),
@@ -162,56 +203,55 @@ class SingleOptiDataset(Dataset):
             'iw': np.array(item['img_width']),
         }
 
-        if 'vertices_h0h1_contact_heat' in item.keys():
-            bev_contact_heat = item['vertices_h0h1_contact_heat']
-        else:
-            bev_contact_heat = np.zeros((75, 75)).astype(np.float32)
-
         if 'contact_map' in item.keys():
             contact_map = item['contact_map']
         else:
-            contact_map = np.zeros((75, 75)).astype(np.bool)
-    
+            contact_map = np.zeros((75, 75)).astype(bool)
 
-        h0id = 0 if item['transl_h0'][0] <= item['transl_h1'][0] else 1
-        h1id = 1-h0id
-        if h0id == 1:
-            bev_contact_heat = bev_contact_heat.T
-            contact_map = contact_map.T
-            gen_target['bbox_h0'], gen_target['bbox_h1'] = gen_target['bbox_h1'], gen_target['bbox_h0']
+        if 'bev_smpl_vertices_root_trans' in item.keys():
+            bev_smpl_vertices = item['bev_smpl_vertices_root_trans']
+        else:
+            bev_smpl_vertices = np.zeros((2, 6890, 3))
+
+        op_keypoints = item[f'openpose'] 
+        if 'vitpose' not in item.keys():
+            vitpose_keypoints = np.zeros((2, 25, 3))
+        else:
+            vitpose_keypoints = item[f'vitpose']
+
+        #### SELECT FINAL KEYPLOINTS ####   
+        if self.use_hands:
+            final_keypoints = item[f'vitposeplus']
+            mask = item['vitposeplus_human_idx'] == -1 # use openpose for missing humans
+            final_keypoints[mask] = item['openpose'][mask]
+        else:
+            final_keypoints = item[f'vitpose']
+            mask = item['vitpose_human_idx'] == -1 # use openpose for missing humans
+            final_keypoints[mask] = item['openpose'][mask]
+            if np.unique(item['vitpose_human_idx']).shape[0] == 1: # and use openpose when vitpose would pick the same person twice
+                final_keypoints = item[f'openpose']
+            # add toe keypoints
+            ankle_thres = 5.0
+            right_ankle_residual = np.sum((final_keypoints[:,11,:] - op_keypoints[:,11,:])**2, axis=1)
+            ram = right_ankle_residual < ankle_thres
+            final_keypoints[ram,22,:] = op_keypoints[ram,22,:]
+            left_ankle_residual = np.sum((final_keypoints[:,14,:] - op_keypoints[:,14,:])**2, axis=1)
+            lam = left_ankle_residual < ankle_thres
+            final_keypoints[lam,19,:] = op_keypoints[lam,19,:] 
         human_target = { 
             'contact_map': contact_map,
-            'bev_contact_heat': bev_contact_heat, 
-            'global_orient_h0': item[f'global_orient_h{h0id}'],
-            'body_pose_h0': item[f'body_pose_h{h0id}'],
-            'transl_h0': item[f'transl_h{h0id}'],
-            'translx_h0': item[f'transl_h{h0id}'][[0]],
-            'transly_h0': item[f'transl_h{h0id}'][[1]],
-            'translz_h0': item[f'transl_h{h0id}'][[2]],
-            'betas_h0': item[f'betas_h{h0id}'][:10],
-            'scale_h0': item[f'betas_h{h0id}'][[-1]],
-            'joints_h0': item[f'joints_h{h0id}'],
-            'vertices_h0': item[f'vertices_h{h0id}'],
-            'bev_keypoints_h0': item[f'bev_keypoints_h{h0id}'],
-            'bev_orig_vertices_h0': item[f'bev_orig_vertices_h{h0id}'],
-            'op_keypoints_h0': item[f'op_keypoints_h{h0id}'],
-            'keypoints_h0': item[f'vitpose_keypoints_h{h0id}'], # added it's the used keypoints
-            'vitpose_keypoints_h0': item[f'vitpose_keypoints_h{h0id}'],
-            'global_orient_h1': item[f'global_orient_h{h1id}'],
-            'body_pose_h1': item[f'body_pose_h{h1id}'],
-            'transl_h1': item[f'transl_h{h1id}'],
-            'translx_h1': item[f'transl_h{h1id}'][[0]],
-            'transly_h1': item[f'transl_h{h1id}'][[1]],
-            'translz_h1': item[f'transl_h{h1id}'][[2]],
-            'betas_h1': item[f'betas_h{h1id}'][:10],
-            'scale_h1': item[f'betas_h{h1id}'][[-1]],
-            'joints_h1': item[f'joints_h{h1id}'],
-            'vertices_h1': item[f'vertices_h{h1id}'],
-            'bev_keypoints_h1': item[f'bev_keypoints_h{h1id}'],
-            'bev_orig_vertices_h1': item[f'bev_orig_vertices_h{h1id}'],
-            'op_keypoints_h1': item[f'op_keypoints_h{h1id}'],
-            'vitpose_keypoints_h1': item[f'vitpose_keypoints_h{h1id}'],
-            'keypoints_h1': item[f'vitpose_keypoints_h{h1id}'], # added it's the used keypoints
+            'global_orient': item[f'{self.init_method}_{self.body_model_type}_global_orient'],
+            'body_pose': item[f'{self.init_method}_{self.body_model_type}_body_pose'],
+            'transl': item[f'{self.init_method}_{self.body_model_type}_transl'],
+            'betas': item[f'{self.init_method}_{self.body_model_type}_betas'],
+            'scale': item[f'{self.init_method}_{self.body_model_type}_scale'].astype(float),
+            'vertices': item[f'{self.init_method}_{self.body_model_type}_vertices'],
+            'bev_smpl_vertices': bev_smpl_vertices,
+            'op_keypoints': op_keypoints[:,self.kpts_idxs,:],
+            'vitpose_keypoints': vitpose_keypoints[:,self.kpts_idxs,:], 
+            #'vitpose_keypoints': item[f'vitpose'][:,self.kpts_idxs,:],
+            'vitposeplus_keypoints': item[f'vitposeplus'][:,self.kpts_idxs,:],
+            'keypoints': final_keypoints[:,self.kpts_idxs,:], 
         }
                 
         target = {**gen_target, **cam_target, **human_target}

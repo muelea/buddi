@@ -1,26 +1,34 @@
-batch_size: 64
+batch_size: 512
 device: cuda
 logging:
   base_folder: demo/buddi/training/
-  run: demo_buddi_v01
-  summaries_freq: 10.0
-  checkpoint_freq: 10.0
+  run: demo_buddi_v02
+  summaries_freq: 100.0
+  checkpoint_freq: 100.0
+  logger: 'wandb'
+  project_name: 'HumanHumanContactGenerativeModel'
 training:
-  max_epochs: 10000
+  max_epochs: 5000
   num_workers: 8
   pretrained: ''
   clip_grad_norm: 1.0
 datasets:
-  train_names: ['flickrci3ds', 'chi3d']
-  train_composition: [0.7, 0.3]
-  val_names: ['flickrci3ds', 'chi3d']
+  train_names: ['chi3d', 'hi4d','flickrci3ds']
+  train_composition: [0.2, 0.2, 0.6]
+  val_names: ['hi4d', 'chi3d', 'flickrci3ds']
   flickrci3ds:
     processed_data_folder: datasets/processed/FlickrCI3D_Signatures
-    pseudogt_folder: hhcs_opti/run2_20221019/results
+    pseudogt_folder: hhcs_opti/run4_20231015/results
   chi3d:
     original_data_folder: datasets/original/CHI3D
     processed_data_folder: datasets/processed/CHI3D
-    load_single_camera: true
+    load_single_camera: false
+    load_unit_glob_and_transl: false
+  hi4d:
+    original_data_folder: datasets/original/Hi4D
+    processed_data_folder: datasets/processed/Hi4D
+    load_single_camera: false
+    load_unit_glob_and_transl: false
   augmentation:
     use: false
   processing:
@@ -65,9 +73,9 @@ model:
       relative_transl: true
       relative_orient: false
       guidance_params: []
-      guidance_param_nc: 0.1
+      guidance_param_nc: 0.5
       guidance_all_nc: 0.1
-      guidance_no_nc: 0.1
+      guidance_no_nc: 0.8
     losses:
       pseudogt_pose:
         type: l2
@@ -101,7 +109,7 @@ body_model:
   type: smplx
   smpl_family_folder: essentials/body_models
   smplx:
-    num_vertices: 10498
+    num_vertices: 10475
     init:
       batch_size: 1
       gender: neutral
@@ -117,3 +125,8 @@ body_model:
           openpose_format: coco25
 evaluation:
   metrics: ['v2v', 'mpjpe', 'pa_mpjpe', 'pairwise_pa_mpjpe']
+  generative_metrics: ['gen_diversity', 'gen_fid', 'gen_contact_and_isect', 'gen_tsne']
+  num_samples: 512
+  gen_fid:
+    fid_model_path: ''
+    fid_model_cfg: ''

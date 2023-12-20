@@ -17,6 +17,7 @@ from llib.cameras.perspective import PerspectiveCamera
 from llib.bodymodels.utils import smpl_to_openpose
 from loguru import logger as guru
 from llib.data.preprocess.utils.shape_converter import ShapeConverter
+from llib.utils.image.bbox import iou
         
 
 import torch
@@ -93,20 +94,20 @@ class Demo():
 
         # load contact annotations is available
         self.has_gt_contact_annotation = has_gt_contact_annotation
-        if self.has_gt_contact_annotation:
-            self.imar_vision_datasets_tools_folder =  imar_vision_datasets_tools_folder
-            annotation_fn = osp.join(
-                self.data_folder, 'interaction_contact_signature.json'
-            )
-            if os.path.exists(annotation_fn):
-                self.annotation = json.load(open(annotation_fn, 'r'))
+        # if self.has_gt_contact_annotation:
+        #     self.imar_vision_datasets_tools_folder =  imar_vision_datasets_tools_folder
+        #     annotation_fn = osp.join(
+        #         self.data_folder, 'interaction_contact_signature.json'
+        #     )
+        #     if os.path.exists(annotation_fn):
+        #         self.annotation = json.load(open(annotation_fn, 'r'))
 
 
-            contact_regions_fn = osp.join(
-                self.imar_vision_datasets_tools_folder, 'info/contact_regions.json'
-            )
-            contact_regions = json.load(open(contact_regions_fn, 'r'))
-            self.rid_to_smplx_fids = contact_regions['rid_to_smplx_fids']
+        #     contact_regions_fn = osp.join(
+        #         self.imar_vision_datasets_tools_folder, 'info/contact_regions.json'
+        #     )
+        #     contact_regions = json.load(open(contact_regions_fn, 'r'))
+        #     self.rid_to_smplx_fids = contact_regions['rid_to_smplx_fids']
 
         self.number_of_regions = number_of_regions
         self.contact_zeros = torch.zeros(
@@ -148,75 +149,121 @@ class Demo():
 
     def process_bev(self, bev_human_idx, bev_data, image_size):
 
-            height, width = image_size
+        smpl_betas_scale = bev_data['smpl_betas'][bev_human_idx]
+        smpl_betas = smpl_betas_scale[:10]
+        smpl_scale = smpl_betas_scale[-1]
+        smpl_body_pose = bev_data['smpl_thetas'][bev_human_idx][3:]
+        smpl_global_orient = bev_data['smpl_thetas'][bev_human_idx][:3]
 
-            # hacky - use smpl pose parameters with smplx body model
-            # not perfect, but close enough. SMPL betas are not used with smpl-x.
-            bev_betas = bev_data['smpl_betas'][bev_human_idx]
-            age_val = bev_betas[-1]
-            if self.body_model_type == 'smplx':
-                body_pose = bev_data['smpl_thetas'][bev_human_idx][3:66]
-                global_orient = bev_data['smpl_thetas'][bev_human_idx][:3]
-                if age_val > 0.8:
-                    betas = self.shape_converter_smil.forward(torch.from_numpy(bev_betas[:10]).unsqueeze(0)) # set to zero for smpl-x
-                    return None # do not process infants
-                else:
-                    betas = self.shape_converter_smpla.forward(torch.from_numpy(bev_betas).unsqueeze(0)) # set to zero for smpl-x
-                betas = betas[0].numpy()
-            elif self.body_model_type == 'smpl':
-                body_pose = bev_data['smpl_thetas'][bev_human_idx][3:]
-                global_orient = bev_data['smpl_thetas'][bev_human_idx][:3]
-                betas = bev_data['smpl_betas'][bev_human_idx][:10]
-            
-            bev_cam_trans = torch.from_numpy(bev_data['cam_trans'][bev_human_idx])
-            body = self.body_model(
-                global_orient=torch.from_numpy(global_orient).unsqueeze(0),
-                body_pose=torch.from_numpy(body_pose).unsqueeze(0),
-                betas=torch.from_numpy(betas).unsqueeze(0),
-            )
-            root_trans = body.joints.detach()[:,0,:]
-            transl = -root_trans.to('cpu') + bev_cam_trans.to('cpu')
-            transl = transl[0]
+        if smpl_scale > 0.8:
+            smplx_betas_scale = self.shape_converter_smil.forward(torch.from_numpy(smpl_betas).unsqueeze(0))
+            smplx_betas = smplx_betas_scale[0,:10].numpy()
+            smplx_scale = smplx_betas_scale[0,10].numpy()
+            #smplx_scale = smpl_scale # there is no smilxa model, so we keep the scale form bev
+        else:
+            smplx_betas_scale = self.shape_converter_smpla.forward(torch.from_numpy(smpl_betas_scale).unsqueeze(0))
+            smplx_betas = smplx_betas_scale[0,:10].numpy()
+            smplx_scale = smplx_betas_scale[0,10].numpy()
 
-            body = self.body_model(
-                global_orient=torch.from_numpy(global_orient).unsqueeze(0),
-                body_pose=torch.from_numpy(body_pose).unsqueeze(0),
-                betas=torch.from_numpy(betas).unsqueeze(0),
-                transl=transl.unsqueeze(0),
-            )
-            joints = body.joints.detach().to('cpu').numpy()[0]
-            vertices = body.vertices.detach().to('cpu').numpy()[0]
+        cam_trans = bev_data['cam_trans'][bev_human_idx]
+        smpl_joints = bev_data['joints'][bev_human_idx]
+        smpl_vertices = bev_data['verts'][bev_human_idx]
+        smpl_joints_2d = bev_data['pj2d_org'][bev_human_idx]
 
-            # create bev camera 
-            bev_camera = PerspectiveCamera(
-                rotation=torch.tensor([[0., 0., 180.]]),
-                translation=torch.tensor([[0., 0., 0.]]),
-                afov_horizontal=torch.tensor([self.BEV_FOV]),
-                image_size=torch.tensor([[width, height]]),
-                batch_size=1,
-                device='cpu'
-            )
-            keypoints = bev_camera.project(body.joints.detach())
-            keypoints = keypoints.detach().numpy()[0]
+        data = {
+            'bev_smpl_global_orient': smpl_global_orient,
+            'bev_smpl_body_pose': smpl_body_pose,
+            'bev_smpl_betas': smpl_betas,
+            'bev_smpl_scale': smpl_scale,
+            'bev_smplx_betas': smplx_betas,
+            'bev_smplx_scale': smplx_scale,
+            'bev_cam_trans': cam_trans,
+            'bev_smpl_joints': smpl_joints,
+            'bev_smpl_vertices': smpl_vertices,
+            'bev_smpl_joints_2d': smpl_joints_2d,
+        }
+        
+        height, width = image_size
 
-            bev_joints3d = bev_data['joints'][bev_human_idx]
-            bev_vertices = bev_data['verts'][bev_human_idx]
-            bev_root_trans = bev_joints3d[[45,46]].mean(0)
-            bev_vertices_root_trans = bev_vertices - bev_root_trans + bev_cam_trans.numpy()
+        # hacky - use smpl pose parameters with smplx body model
+        # not perfect, but close enough. SMPL betas are not used with smpl-x.
+        if self.body_model_type == 'smplx':
+            body_pose = data['bev_smpl_body_pose'][:63]
+            global_orient = data['bev_smpl_global_orient']
+            betas = data['bev_smplx_betas']
+            scale = data['bev_smplx_scale']
+        else:
+            raise('not implemented: Data loader for SMPL loader in Flickr Signatures')
 
-            params = {
-                'global_orient': global_orient,
-                'body_pose': body_pose,
-                'transl': transl,
-                'betas': betas,
-                'joints': joints,
-                'vertices': vertices,
-                'bev_keypoints': keypoints,
-                'bev_orig_vertices': bev_vertices_root_trans,
-                'bev_orig_betas': bev_data['smpl_betas'][bev_human_idx],
-            }
+        # ignore infants, because SMPL-X doesn't support them (template is noisy)
+        has_infant = False
+        if np.any(data['bev_smpl_scale'] > 0.8):
+            has_infant = True
+        
+        bev_cam_trans = torch.from_numpy(data['bev_cam_trans'])
+        bev_camera = PerspectiveCamera(
+            rotation=torch.tensor([[0., 0., 180.]]),
+            translation=torch.tensor([[0., 0., 0.]]),
+            afov_horizontal=torch.tensor([self.BEV_FOV]),
+            image_size=torch.tensor([[width, height]]),
+            batch_size=1,
+            device='cpu'
+        )
 
-            return params
+        bev_vertices = data['bev_smpl_vertices']
+        bev_root_trans = data['bev_smpl_joints'][[45,46],:].mean(0)
+        bev_vertices_root_trans = bev_vertices - bev_root_trans[np.newaxis,:] \
+            + bev_cam_trans.numpy()[np.newaxis,:]
+        data['bev_smpl_vertices_root_trans'] = bev_vertices_root_trans
+        
+        smplx_update = {
+            'bev_smplx_global_orient': [],
+            'bev_smplx_body_pose': [],
+            'bev_smplx_transl': [],
+            'bev_smplx_keypoints': [],
+            'bev_smplx_vertices': [],
+        }
+
+        idx = 0
+        h_global_orient = torch.from_numpy(global_orient).float().unsqueeze(0)
+        smplx_update['bev_smplx_global_orient'].append(h_global_orient)
+        
+        h_body_pose = torch.from_numpy(body_pose).float().unsqueeze(0)
+        smplx_update['bev_smplx_body_pose'].append(h_body_pose)
+
+        h_betas_scale = torch.from_numpy(
+            np.concatenate((betas, scale[None]), axis=0)
+        ).float().unsqueeze(0)
+
+        body = self.body_model(
+            global_orient=h_global_orient,
+            body_pose=h_body_pose,
+            betas=h_betas_scale,
+        )
+
+        root_trans = body.joints.detach()[:,0,:]
+        transl = -root_trans.to('cpu') + bev_cam_trans.to('cpu')
+        smplx_update['bev_smplx_transl'].append(transl)
+
+        body = self.body_model(
+            global_orient=h_global_orient,
+            body_pose=h_body_pose,
+            betas=h_betas_scale,
+            transl=transl,
+        )
+
+        keypoints = bev_camera.project(body.joints.detach())
+        smplx_update['bev_smplx_keypoints'].append(keypoints.detach())
+
+        vertices = body.vertices.detach().to('cpu')
+        smplx_update['bev_smplx_vertices'].append(vertices)
+
+        for k, v in smplx_update.items():
+            smplx_update[k] = torch.cat(v, dim=0)
+
+        data.update(smplx_update)
+
+        return data, has_infant
 
     def read_data(self, imgname):
 
@@ -270,8 +317,6 @@ class Demo():
 
     def _load_single_human(
         self,
-        image_data,
-        human_id, 
         op_data,
         vitpose_data,
         bev_data,
@@ -283,51 +328,99 @@ class Demo():
         img_width,
     ):
         bev_human_idx = opbev_kpcost_best_match[op_human_idx]
-        human_body_model_params = self.process_bev(
+        human_data, has_infant = self.process_bev(
             bev_human_idx, bev_data, (img_height, img_width))
-
-        # check if infant of no bev matach was detected. If so, ignore image.
-        if (human_body_model_params is None) or (bev_human_idx == -1): 
+        human_data['has_infant'] = has_infant
+        
+        # check if infant or no bev match was detected. If so, ignore image.
+        if (human_data is None) or (bev_human_idx == -1): 
             return None
 
-        # add bev parameters
-        for k, v in human_body_model_params.items(): 
-            image_data[f'{k}_h{human_id}'] = v
-
-        # add openpose keypoints
-        op_human_kpts = op_data[op_human_idx]
-        image_data[f'op_keypoints_h{human_id}'] = np.array(
-            op_human_kpts['pose_keypoints_2d']).reshape(-1,3)
+        # process OpenPose keypoints
+        op_kpts = np.zeros((135, 3))
+        if op_human_idx != -1:
+            kpts = op_data[op_human_idx]
+            # body + hands
+            body = np.array(kpts['pose_keypoints_2d'] + \
+                kpts['hand_left_keypoints_2d'] + kpts['hand_right_keypoints_2d']
+            ).reshape(-1,3)
+            # face 
+            face = np.array(kpts['face_keypoints_2d'],
+                dtype=np.float32).reshape([-1, 3])[17: 17 + 51, :]
+            contour = np.array(kpts['face_keypoints_2d'],
+                dtype=np.float32).reshape([-1, 3])[:17, :]
+            # final openpose
+            op_kpts = np.concatenate([body, face, contour], axis=0)
 
         # OpenPose and vit detection cost (if cost is too high, use Openpose) 
         vitpose_human_idx = opvitpose_kpcost_best_match[op_human_idx]
-        vitpose_human_kpts = compare_and_select_openpose_vitpose(
-            vitpose_data, op_human_kpts, opvitpose_kpcost_matrix,
-            op_human_idx, vitpose_human_idx, KEYPOINT_COST_TRHESHOLD)
-        image_data[f'vitpose_keypoints_h{human_id}'] = np.array(
-            vitpose_human_kpts['pose_keypoints_2d']).reshape(-1,3)
+        
+        # OpenPose and vit detection cost (if cost is too high, use Openpose)
+        vitpose_kpts = np.zeros_like(op_kpts) 
+        if vitpose_human_idx != -1:
+            kpts = vitpose_data[vitpose_human_idx]
+            # body + hands
+            body = np.array(kpts['pose_keypoints_2d'] + \
+                kpts['hand_left_keypoints_2d'] + kpts['hand_right_keypoints_2d']
+            ).reshape(-1,3)
+            # face 
+            face = np.array(kpts['face_keypoints_2d'],
+                dtype=np.float32).reshape([-1, 3])[17: 17 + 51, :]
+            contour = np.array(kpts['face_keypoints_2d'],
+                dtype=np.float32).reshape([-1, 3])[:17, :]
+            # final openpose
+            vitpose_kpts = np.concatenate([body, face, contour], axis=0)
 
-        return image_data
+        # # add keypoints vitposeplus
+        # vitposeplus_kpts = np.zeros_like(op_kpts)
+        # if vitposeplus_human_idx != -1:
+        #     vitposeplus_kpts_orig = vitposeplus_data[vitposeplus_human_idx]['keypoints']
+        #     main_body_idxs = [0, 16, 15, 18, 17, 5, 2, 6, 3, 7, 4, 12, 9, 13, 10, 14, 11]
+        #     vitposeplus_kpts[main_body_idxs] = vitposeplus_kpts_orig[:17] # main body keypoints
+        #     vitposeplus_kpts[19:25] = vitposeplus_kpts_orig[17:23] # foot keypoints
+        #     vitposeplus_kpts[25:46] = vitposeplus_kpts_orig[-42:-21] # left hand keypoints
+        #     vitposeplus_kpts[46:67] = vitposeplus_kpts_orig[-21:] # right hand keypoints
+        #     #vitposeplus_kpts[67:135] = vitposeplus_kpts_orig[23:-42] # face keypoints
+        #     face_countour = vitposeplus_kpts_orig[23:-42] 
+        #     face = np.array(face_countour)[17: 17 + 51, :]
+        #     contour = np.array(face_countour)[:17, :]
+        #     vitposeplus_kpts[67:135] = np.concatenate([face, contour], axis=0) 
 
-    def load_image(self, imgname):
+        # add idxs, bev data and keypoints to template
+        human_data['openpose_human_idx'] = op_human_idx
+        human_data['bev_human_idx'] = bev_human_idx
+        human_data['vitpose_human_idx'] = vitpose_human_idx
+        human_data['vitposeplus_human_idx'] = vitpose_human_idx
+        human_data['vitpose'] = vitpose_kpts
+        human_data['openpose'] = op_kpts
+        human_data['vitposeplus'] = vitpose_kpts
+    
+        for k, v in human_data.items():
 
-        img_path, IMG, bev_data, op_data, vitpose_data = self.read_data(imgname)
+            if k in [
+                'bev_smplx_global_orient', 'bev_smplx_body_pose', 'bev_smplx_transl', 
+                'bev_smplx_keypoints', 'bev_smplx_vertices'
+            ]:
+                v = v[0]
+
+            human_data[k] = np.array(v).copy()
+
+        return human_data
+
+    def load_single_image(self, imgname):
+
+        img_path, IMG, bev_data, op_data, vitpose_data = self.read_data(imgname)        
         image_data = self._get_output_template(IMG, imgname, img_path)
 
-        ################ Match HHC annotation with OpenPose and ViT keypoints #################
-        op_bbox = self.bbox_from_openpose(op_data, kp_key='pose_keypoints_2d') 
-
-        # none of this available at test time without contact map
-        image_data['contact_index'] = 0
-        image_data['hhc_contacts_human_ids'] = [0, 1]
-        image_data['hhc_contacts_region_ids'] = 0
-        image_data['contact_map'] = self.contact_zeros
-
-        person_ids = [0, 1] # just use the first two detections of openpose
-        cop, cbev, cvit = len(op_bbox), bev_data['joints'].shape[0], len(vitpose_data)
-        if cop != 2 or cbev != 2 or cvit != 2:
-            print('Num bbox detected: ', cop, cbev, cvit)
-            return None
+        ################ Find all overlapping bounding boxes and process these people #################
+        op_bbox = self.bbox_from_openpose(op_data, kp_key='pose_keypoints_2d')
+        all_person_ids = []
+        for bb1_idx in range(op_bbox.shape[0]):
+            for bb2_idx in range(bb1_idx + 1, op_bbox.shape[0]):
+                bb1, bb2 = op_bbox[bb1_idx], op_bbox[bb2_idx]
+                bb12_iou = iou(bb1, bb2)
+                if bb12_iou > 0:
+                    all_person_ids.append([bb1_idx, bb2_idx])
 
         # cost matric to solve correspondance between openpose and bev and vitpose
         opbev_kpcost_matrix, opbev_kpcost_best_match = \
@@ -335,200 +428,56 @@ class Demo():
         opvitpose_kpcost_matrix, opvitpose_kpcost_best_match = \
             self._get_opvitpose_cost(op_data, vitpose_data, IMG, self.unique_keypoint_match)
 
-        # Select the two bboxes with highest confidence
-        ################ load the two humans in contact #################
-        for human_id in person_ids:
-            bbox = op_bbox[human_id] 
-            image_data[f'bbox_h{human_id}'] = bbox
-            # this is redundant, but keep in case bounding boxes are available
-            #op_human_idx = ciop_iou_best_match[bbox_id]
-            op_human_idx = human_id
+        ################ load the two humans in contact for each pair #################
+        all_image_data = []
+        for pidx, person_ids in enumerate(all_person_ids):
 
-            self._load_single_human(
-                image_data, human_id, 
-                op_data, vitpose_data, bev_data,
-                op_human_idx,
-                opbev_kpcost_best_match,
-                opvitpose_kpcost_best_match,
-                opvitpose_kpcost_matrix,
-                IMG.shape[0], IMG.shape[1],
-            )
+            image_data['contact_index'] = pidx
 
-        return [image_data]
-
-
-    def load_from_cmap(self, imgname, annotation):
-        
-        img_path, IMG, bev_data, op_data, vitpose_data = self.read_data(imgname)
-        image_data_template = self._get_output_template(IMG, imgname, img_path)
-
-        ################ Match HHC annotation with OpenPose and ViT keypoints #################
-        op_bbox = self.bbox_from_openpose(op_data, kp_key='pose_keypoints_2d') 
-        ci_bbox = np.array(annotation['bbxes'])
-        ciop_iou_matrix, ciop_iou_best_match = iou_matrix(ci_bbox, op_bbox)
-
-        opbev_kpcost_matrix, opbev_kpcost_best_match = \
-            self._get_opbev_cost(op_data, bev_data, IMG, False)
-        opvitpose_kpcost_matrix, opvitpose_kpcost_best_match = \
-            self._get_opvitpose_cost(op_data, vitpose_data, IMG, False)
-
-        image_contact_data = []
-
-        # load contact annotations
-        for case_ci_idx, case_ci in enumerate(annotation['ci_sign']):
-            IGNORE_PAIR = False
-            image_data = image_data_template.copy()
-
-            image_data['contact_index'] = case_ci_idx
-            # contact human id annotation
-            person1_id, person2_id = case_ci['person_ids']
-            image_data['hhc_contacts_human_ids'] = case_ci['person_ids']
-            # contact regions annotation
-            region_id = case_ci[self.body_model_type]['region_id']
-            image_data['hhc_contacts_region_ids'] = region_id
-
-            contact_map = self.contact_zeros.clone()
-            for rid in region_id:
-                contact_map[rid[0], rid[1]] = True
-            image_data['contact_map'] = contact_map
-
-            ################ load the two humans in contact #################
-            human0_id = None
-            for human_id, bbox_id in enumerate(case_ci['person_ids']):
-                bbox = annotation['bbxes'][bbox_id]
-                image_data[f'bbox_h{human_id}'] = bbox
-                op_human_idx = ciop_iou_best_match[bbox_id]
-
-                self._load_single_human(
-                    image_data, human_id, 
+            h0 = self._load_single_human(
                     op_data, vitpose_data, bev_data,
-                    op_human_idx,
+                    person_ids[0],
                     opbev_kpcost_best_match,
                     opvitpose_kpcost_best_match,
                     opvitpose_kpcost_matrix,
                     IMG.shape[0], IMG.shape[1],
-                )
+            )
 
-            image_contact_data.append(image_data)
+            h1 = self._load_single_human(
+                    op_data, vitpose_data, bev_data,
+                    person_ids[1],
+                    opbev_kpcost_best_match,
+                    opvitpose_kpcost_best_match,
+                    opvitpose_kpcost_matrix,
+                    IMG.shape[0], IMG.shape[1],
+            )
 
-        return image_contact_data
+            if h0 is None or h1 is None:
+                return None
+
+            concatenated_dict = {}
+            for key in h0.keys():
+                concatenated_dict[key] = np.stack((h0[key], h1[key]), axis=0)
+            
+            image_data.update(concatenated_dict)
+
+            all_image_data.append(image_data.copy())
+
+        return all_image_data
 
 
     def load(self):
 
         guru.info(f'Processing data from {self.data_folder}')
 
-        count_failed = 0
-
         data = []
-        # iterate though dataset / images
-        if self.has_gt_contact_annotation:
-            for imgname, anno in tqdm(self.annotation.items()):
-                try:
-                    data += self.load_from_cmap(imgname, anno)
-                except:
-                    print(f'Failed loading data for image {imgname}')
-        else:
-            for imgname in os.listdir(self.image_folder):
-                if self.image_name_select != '':
-                    if self.image_name_select not in imgname:
-                        continue   
-                try:
-                    data += self.load_image('.'.join(imgname.split('.')[:-1]))
-                except Exception as e:
-                    print(e)
-                    # is exception i skeyboard interrupt, exit program
-                    if isinstance(e, KeyboardInterrupt):
-                        sys.exit()
-                    count_failed += 1
-                    print(f'Failed loading data for image {imgname}')
+        for imgname in os.listdir(self.image_folder):
 
-        print(f'Loaded dataset: sucess {len(data)}, failed {count_failed}')
+            # ignore images that were not selected
+            if self.image_name_select != '':
+                if self.image_name_select not in imgname:
+                    continue   
 
+            data += self.load_single_image('.'.join(imgname.split('.')[:-1]))
+            
         return data
-    
-    def get_single_item(self, index):
-
-        item = self.data[index]
-
-        # crop image using both bounding boxes
-        h1_bbox, h2_bbox = item[f'bbox_h0'], item[f'bbox_h1']
-        bbox = self.join_bbox(h1_bbox, h2_bbox) if h1_bbox is not None else None
-        # cast bbox to int
-        bbox = np.array(bbox).astype(int)
-        h1_bbox = np.array(h1_bbox).astype(int)
-        h2_bbox = np.array(h2_bbox).astype(int)
-        
-
-        # Load image and resize directly before cropping, because of speed
-        gen_target = {
-            'images': [0.0],
-            'imgpath': item['imgpath'],
-            'bbox_h0': h1_bbox,
-            'bbox_h1': h2_bbox,
-            'bbox_h0h1': bbox,
-            'imgname_fn': item['imgname'],
-            'imgname_fn_out': os.path.splitext(item['imgname'])[0],
-            'img_height': item['img_height'],
-            'img_width': item['img_height'],
-            'sample_index': index,
-        }
-
-        cam_target = {
-            'pitch': np.array(item['cam_rot'][0]),
-            'yaw': np.array(item['cam_rot'][1]),
-            'roll': np.array(item['cam_rot'][2]),
-            'tx': np.array(item['cam_transl'][0]),
-            'ty': np.array(item['cam_transl'][1]),
-            'tz': np.array(item['cam_transl'][2]),
-            'fl': np.array(item['fl']),
-            'ih': np.array(item['img_height']),
-            'iw': np.array(item['img_width']),
-        }
-
-
-        h0id = 0 if item['transl_h0'][0] <= item['transl_h1'][0] else 1
-        h1id = 1-h0id
-        human_target = { 
-            'contact_map': contact_map,
-            'bev_contact_heat': bev_contact_heat, 
-            'global_orient_h0': item[f'global_orient_h{h0id}'],
-            'body_pose_h0': item[f'body_pose_h{h0id}'],
-            'transl_h0': item[f'transl_h{h0id}'],
-            'translx_h0': item[f'transl_h{h0id}'][[0]],
-            'transly_h0': item[f'transl_h{h0id}'][[1]],
-            'translz_h0': item[f'transl_h{h0id}'][[2]],
-            'betas_h0': item[f'betas_h{h0id}'][:10],
-            'scale_h0': item[f'betas_h{h0id}'][[-1]],
-            'joints_h0': item[f'joints_h{h0id}'],
-            'vertices_h0': item[f'vertices_h{h0id}'],
-            'bev_keypoints_h0': item[f'bev_keypoints_h{h0id}'],
-            'bev_orig_vertices_h0': item[f'bev_orig_vertices_h{h0id}'],
-            'op_keypoints_h0': item[f'op_keypoints_h{h0id}'],
-            'keypoints_h0': item[f'vitpose_keypoints_h{h0id}'], # add vitpose as 'keypoints', since they're used
-            'vitpose_keypoints_h0': item[f'vitpose_keypoints_h{h0id}'],
-            'global_orient_h1': item[f'global_orient_h{h1id}'],
-            'body_pose_h1': item[f'body_pose_h{h1id}'],
-            'transl_h1': item[f'transl_h{h1id}'],
-            'translx_h1': item[f'transl_h{h1id}'][[0]],
-            'transly_h1': item[f'transl_h{h1id}'][[1]],
-            'translz_h1': item[f'transl_h{h1id}'][[2]],
-            'betas_h1': item[f'betas_h{h1id}'][:10],
-            'scale_h1': item[f'betas_h{h1id}'][[-1]],
-            'joints_h1': item[f'joints_h{h1id}'],
-            'vertices_h1': item[f'vertices_h{h1id}'],
-            'bev_keypoints_h1': item[f'bev_keypoints_h{h1id}'],
-            'bev_orig_vertices_h1': item[f'bev_orig_vertices_h{h1id}'],
-            'op_keypoints_h1': item[f'op_keypoints_h{h1id}'],
-            'vitpose_keypoints_h1': item[f'vitpose_keypoints_h{h1id}'],
-            'keypoints_h1': item[f'vitpose_keypoints_h{h1id}'], # added it's the used keypoints
-        }
-    
-        target = {**gen_target, **cam_target, **human_target}
-
-        target = self.to_tensors(target)
-
-        return target        
-        
-        
-

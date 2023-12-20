@@ -40,8 +40,9 @@ class FlickrCI3D_Signatures:
     number_of_regions: int = 75
     image_folder: str = 'images'
     bev_folder: str = 'bev'
-    openpose_folder: str = 'keypoints/keypoints'
+    openpose_folder: str = 'openpose'
     vitpose_folder: str = 'vitpose'
+    vitposeplus_folder: str = 'vitposeplus'
     vitdet_folder: str = 'vitdet'
     image_format: str = 'png'
     pseudogt_folder: str = 'pseudogt/summaries'
@@ -112,6 +113,29 @@ class CHI3D:
     overfit: bool = False
     overfit_num_samples: int = 12
     load_single_camera: bool = False
+    load_from_scratch_single_camera: bool = False
+    load_contact_frame_only: bool = True
+    load_unit_glob_and_transl: bool = False
+    features: DatasetFeatures = DatasetFeatures(
+        is_itw = False, 
+        has_dhhc_sig = True,
+        has_op_kpts = True,
+    )
+
+@dataclass
+class HI4D:
+    original_data_folder: str  = 'datasets/original/Hi4D'
+    processed_data_folder: str = 'datasets/processed/Hi4D'
+    image_folder: str = 'images'
+    bev_folder: str = 'bev'
+    openpose_folder: str = 'keypoints/keypoints'
+    vitpose_folder: str = 'keypoints/vitposeplus'
+    image_format: str = 'jpg'
+    overfit: bool = False
+    overfit_num_samples: int = 12
+    load_single_camera: bool = False
+    load_from_scratch_single_camera: bool = False
+    load_unit_glob_and_transl: bool = False
     features: DatasetFeatures = DatasetFeatures(
         is_itw = False, 
         has_dhhc_sig = True,

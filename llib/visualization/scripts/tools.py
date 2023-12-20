@@ -25,15 +25,15 @@ def afov_to_focal_length(afov, width, height):
     return focal_length
 
 
-def build_renderer(cfg=None):
+def build_renderer(cfg=None, width=200, height=256):
     # create renderer to visualize results
     afov_horizontal = cfg.afov_horizontal if cfg is not None else 60
-    width = cfg.width if cfg is not None else 200
-    height = cfg.height if cfg is not None else 256
+    width = cfg.width if cfg is not None else width
+    height = cfg.height if cfg is not None else height
 
     camera = build_camera(width, height, afov_horizontal)
 
-    return PyRenderer(cameras=camera.cameras, image_width=width, image_height=height,)
+    return PyRenderer(cameras=camera.cameras, image_width=width, image_height=height)
 
 
 def move_to(tensor, device="cpu"):

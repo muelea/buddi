@@ -34,5 +34,10 @@ class Logging:
     # logger level information
     logger_level: str = 'INFO'
 
+    # which logger to use 
+    logger: str = 'tensorboard' # tensorboard, wandb
+    project_name: str = 'MyAwesomeProject' # project name for wandb
+    run_id: str = 'default' # run id for wandb
+    wandb_api_key_path: str = '.wandb/api.txt' # the path to a txt file with your wandb api key
 
 conf = OmegaConf.structured(Logging)

@@ -1,0 +1,130 @@
+batch_size: 512
+device: cuda
+logging:
+  base_folder: demo/buddi/training/
+  run: demo_buddi_v02
+  summaries_freq: 100.0
+  checkpoint_freq: 100.0
+  logger: 'wandb'
+  project_name: 'HumanHumanContactGenerativeModel'
+training:
+  max_epochs: 5000
+  num_workers: 8
+  pretrained: ''
+  clip_grad_norm: 1.0
+datasets:
+  train_names: ['chi3d', 'hi4d','flickrci3ds']
+  train_composition: [0.2, 0.2, 0.6]
+  val_names: ['hi4d', 'chi3d', 'flickrci3ds'] # Hi4D not working yet
+  flickrci3ds:
+    processed_data_folder: datasets/processed/FlickrCI3D_Signatures
+    pseudogt_folder: hhcs_opti/run4_20231015/results
+  chi3d:
+    original_data_folder: datasets/original/CHI3D
+    processed_data_folder: datasets/processed/CHI3D
+    load_single_camera: false
+  hi4d:
+    original_data_folder: datasets/original/Hi4D
+    processed_data_folder: datasets/processed/Hi4D
+    load_single_camera: false
+  augmentation:
+    use: false
+  processing:
+    use: false
+    load_image: false
+model:
+  diffusion:
+    steps: 1000
+    noise_schedule: cosine
+    rescale_timesteps: false
+    timestep_respacing: ''
+    loss_type: custom
+    model_mean_type: start_x
+    model_var_type: fixed_large
+  regressor:
+    type: diffusion_transformer
+    diffusion_transformer:
+      dim: 152
+      depth: 6
+      heads: 8
+      mlp_dim: 500
+      dropout: 0.1
+      use_positional_encoding: false
+      use_positional_embedding: false
+      use_human_embedding: true
+      use_param_embedding: true
+      max_tokens: 100
+      use_cross_attention: false
+      share_linear_layers: false
+      encode_target: false
+    optimizer:
+      type: adam
+      adam:
+        lr: 0.0001
+    experiment:
+      contact_rep: bev_contact_heat
+      rotrep: sixd
+      in_data: pgt
+      token_setup: H0PH1P
+      num_contact_tokens: 0
+      smpl_mask: []
+      relative_transl: true
+      relative_orient: false
+      guidance_params: ['bev']
+      guidance_param_nc: 0.5
+      guidance_all_nc: 0.2
+      guidance_no_nc: 0.7
+    losses:
+      pseudogt_pose:
+        type: l2
+        weight: [10.0]
+        squared: true
+        translated: false
+        weighted: false
+        d1_aggregation: sum
+      pseudogt_shape:
+        type: l2
+        weight: [0.1]
+        squared: true
+        translated: false
+        weighted: false
+        d1_aggregation: sum
+      pseudogt_transl:
+        type: l2
+        weight: [1.0]
+        squared: true
+        translated: false
+        weighted: false
+        d1_aggregation: sum
+      pseudogt_v2v:
+        type: l2
+        weight: [1.0]
+        squared: true
+        translated: false
+        weighted: false
+        d1_aggregation: sum
+body_model:
+  type: smplx
+  smpl_family_folder: essentials/body_models
+  smplx:
+    num_vertices: 10475
+    init:
+      batch_size: 1
+      gender: neutral
+      age: kid
+      kid_template_path: essentials/body_models/smil/smplx_kid_template.npy
+      joint_mapper:
+        use: true
+        type: smpl_to_openpose
+        smpl_to_openpose:
+          use_hands: false
+          use_face: false
+          use_face_contour: false
+          openpose_format: coco25
+evaluation:
+  metrics: ['v2v', 'mpjpe', 'pa_mpjpe', 'pairwise_pa_mpjpe']
+  generative_metrics: ['gen_diversity', 'gen_fid', 'gen_contact_and_isect', 'gen_tsne']
+  num_samples: 512
+  gen_fid:
+    fid_model_path: ''
+    fid_model_cfg: ''

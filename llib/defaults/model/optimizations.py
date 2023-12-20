@@ -25,6 +25,7 @@ class HHCS:
 class Optimization:
     type: str = "smplifydc"
     print_loss: bool = True
+    render_iters: bool = False
     use_gt_contact_map: bool = True
     use_vae: bool = False
     pretrained_vae_cfg: str = ""

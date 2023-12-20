@@ -34,6 +34,12 @@ class AE:
     dropout: float = 0.1
 
 @dataclass
+class AutoEncoder:
+    in_channels: int = 5625
+    hidden_channels: int = 1000
+    depth: int = 4
+
+@dataclass
 class ViT:
     image_size: int = 224
     patch_size: int = 16 
@@ -84,6 +90,17 @@ class VAE_MLP:
     embed_id: bool = False
     enc_pos: bool = False
 
+@dataclass
+class AE_MLP:
+    d_model: Optional[int] = None
+    d_latent: int = 64
+    d_features: int = 256
+    n_enc_layers: int = 2
+    n_dec_layers: int = 2
+    dropout: float = 0.1
+    embed_features: bool = False
+    embed_id: bool = False
+    enc_pos: bool = False
 
 @dataclass 
 class BEV:
@@ -158,3 +175,5 @@ class Regressor():
     diffusion_transformer: DiffusionTransformer = DiffusionTransformer()
     hhcc: HHCC = HHCC()
     vae_mlp: VAE_MLP = VAE_MLP()
+    autoencoder: AutoEncoder = AutoEncoder()
+    ae_mlp: AE_MLP = AE_MLP()

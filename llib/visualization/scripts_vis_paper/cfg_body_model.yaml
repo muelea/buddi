@@ -1,0 +1,13 @@
+body_model:
+  type: 'smplx'
+  smplx:
+    init:
+      batch_size: 1
+      gender: 'neutral'
+      age: 'kid'
+      joint_mapper:
+        use: True
+        type: 'smpl_to_openpose'
+        smpl_to_openpose:
+          use_hands: False
+          use_face: False

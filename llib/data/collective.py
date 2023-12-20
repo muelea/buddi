@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from itertools import cycle 
 
-from .single import SingleDataset
+from llib.data.single import SingleDataset
 from loguru import logger as guru
 
 class PartitionSampler(torch.utils.data.Sampler):
@@ -43,11 +43,11 @@ class PartitionSampler(torch.utils.data.Sampler):
             ds_absolute.append(
                 round(self.ds_partition[dset_idx] * self.batch_size))
         # If the sum of the elements per dataset is not equal to the batch size
-        # fill up first dataset
+        # fill up with or remove items from first dataset
         if sum(ds_absolute) != self.batch_size:
             error = self.batch_size - sum(ds_absolute)
             ds_zero_new = ds_absolute[0] + error
-            ds_absolute[0] += ds_zero_new
+            ds_absolute[0] = ds_zero_new
                                              
         return ds_absolute
     
@@ -80,9 +80,9 @@ class PartitionSampler(torch.utils.data.Sampler):
         return batch_idxs
 
     def __len__(self):
-        if not hasattr(self, '_batch_idxs'):
-            self._batch_idxs = self._prepare_batches()
-        return len(self._batch_idxs)
+        #if not hasattr(self, '_batch_idxs'):
+        #    self._batch_idxs = self._prepare_batches()
+        return self.num_batches * sum(self.ds_absolute) #len(self._batch_idxs)
 
     def __iter__(self):
         self._batch_idxs = self._prepare_batches()

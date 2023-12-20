@@ -51,6 +51,7 @@ def update_paths(cfg):
 
 def setup_diffusion_module(cfg, cmd_args):
     # create logger and write vconfig file
+    cfg.logging.logger = 'tensorbaord' # if not set, config stored in wandb might be overwritten
     logger = Logger(cfg)
 
     # build regressor used to predict diffusion params
@@ -97,13 +98,16 @@ def setup_diffusion_module(cfg, cmd_args):
     return diffusion_module
 
 
-def setup_gt_dataset(cfg, shuffle=False, drop_last=False):
+def setup_gt_dataset(cfg, dataset_name='flickrci3ds', shuffle=False, drop_last=False):
     # create datasets
+    
     train_dataset, val_dataset = build_datasets(
         datasets_cfg=cfg.datasets,
         body_model_type=cfg.body_model.type,  # necessary to load the correct contact maps
     )
-    ds = train_dataset if train_dataset is not None else val_dataset
+
+    ds = val_dataset[dataset_name] #train_dataset if train_dataset is not None else val_dataset
+    
     loader = DataLoader(
         ds,
         batch_size=cfg.batch_size,
@@ -131,8 +135,9 @@ def sample_unconditional(diffusion_module, timesteps, log_steps, **kwargs):
     noise_smpls = diffusion_module.get_smpl(noise)
 
     # run diffusion sampling loop
+    eta = kwargs.get("eta", 0.0)
     x_ts, x_starts = diffusion_module.sampling_loop(
-        x=noise_smpls, y={}, ts=timesteps, log_steps=log_steps, return_latent_vec=False
+        x=noise_smpls, y={}, ts=timesteps, log_steps=log_steps, return_latent_vec=False, eta=eta
     )
 
     return x_ts, x_starts
@@ -153,8 +158,9 @@ def sample_unconditional_latent(diffusion_module, timesteps, log_steps, **kwargs
     noise_smpls = diffusion_module.get_smpl(noise)
 
     # run diffusion sampling loop
+    eta = kwargs.get("eta", 0.0)
     x_ts, x_starts, x_latent = diffusion_module.sampling_loop(
-        x=noise_smpls, y={}, ts=timesteps, log_steps=log_steps, return_latent_vec=True
+        x=noise_smpls, y={}, ts=timesteps, log_steps=log_steps, return_latent_vec=True, eta=eta
     )
 
     return x_ts, x_starts, x_latent
@@ -185,8 +191,9 @@ def sample_conditional_with_inpainting(
     guidance = move_to(guidance, device)
 
     # run diffusion sampling loop
+    eta = kwargs.get("eta", 0.0)
     x_ts, x_starts = diffusion_module.sampling_loop(
-        x=noise_smpls, y=guidance, ts=timesteps, inpaint=None, log_steps=log_steps
+        x=noise_smpls, y=guidance, ts=timesteps, inpaint=None, log_steps=log_steps, eta=eta
     )
 
     return x_ts, x_starts
@@ -214,8 +221,9 @@ def sample_unconditional_with_inpainting(
     noise_smpls = diffusion_module.get_smpl(noise)
 
     # run diffusion sampling loop
+    eta = kwargs.get("eta", 0.0)
     x_ts, x_starts = diffusion_module.sampling_loop(
-        x=noise_smpls, y={}, ts=timesteps, inpaint=conditions, log_steps=log_steps
+        x=noise_smpls, y={}, ts=timesteps, inpaint=conditions, log_steps=log_steps, eta=eta
     )
 
     return x_ts, x_starts
@@ -230,7 +238,7 @@ def batch_sample(
     condition_params=None,
     sampling_function=True,
     return_latent_vec=False,
-
+    eta=0.0,
 ):
     """Wrapper around sampling to sample multiple times and concatenate the results"""
 
@@ -270,6 +278,7 @@ def batch_sample(
             conditions=cond,
             condition_params=condition_params,
             log_steps=log_steps,
+            eta=eta,
         )
         if return_latent_vec:
             x_ts, x_starts, x_latents = sampling_output

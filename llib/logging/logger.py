@@ -7,6 +7,7 @@ from loguru import logger
 from omegaconf import OmegaConf
 from tqdm import tqdm
 import torch
+import wandb
 
 class Logger():
     def __init__(
@@ -21,11 +22,11 @@ class Logger():
             config file for logger
         """
         self.cfg = cfg
+        self.logger_type = cfg.logging.logger
 
         # basic output folder 
         self.out_folder = osp.join(cfg.logging.base_folder, cfg.logging.run)
         os.makedirs(self.out_folder, exist_ok=True)
-        self.save_config() # write config file to output_folder
 
         # subfolders
         self.img_folder = osp.join(self.out_folder, cfg.logging.images_folder)
@@ -42,9 +43,71 @@ class Logger():
         # check if checkpoint exists
         self.latest_checkpoint = self.get_latest_checkpoint()
 
-        # setup logging helpers 
-        self.tsw = SummaryWriter(log_dir=self.sum_folder) # use tensorboard to monitor training
+        # setup logging helpers
+        if self.logger_type == 'tensorboard':
+            self.tsw = SummaryWriter(log_dir=self.sum_folder) # use tensorboard to monitor training
+        elif self.logger_type == 'wandb':
+            os.environ["WANDB_SILENT"] = "true"
+            # with open('.wandb/api.txt') as f:
+            with open(cfg.logging.wandb_api_key_path) as f:
+                key = f.readlines()
+                key = key[0].strip('\n')
+            wandb.login(key=key)
 
+            # check if wandb project exists
+            # get run_id if it exists or create a new one
+            if self.exists_checkpoint():
+                # read old config and get run_id
+                with open(osp.join(self.out_folder, 'config.yaml')) as f:
+                    old_cfg = OmegaConf.load(f)
+                run_id = old_cfg.logging.run_id
+                logger.info(f'Resume training logs in wandb with run_id: {run_id}')
+            else:
+                run_id = wandb.util.generate_id()
+                cfg.logging.run_id = run_id
+                logger.info(f'Create new wandb project with run_id: {run_id}')
+
+            # init wandb
+            self.wdb = wandb.init(
+                project=cfg.logging.project_name, 
+                config=OmegaConf.to_container(cfg, resolve=True),
+                name=cfg.logging.run,
+                id=run_id,
+                resume='allow',
+            )
+        
+        # save config after wandb init and after run_id was created
+        self.save_config() # write config file to output_folder
+
+    def log(self, dtype, name, value, step=None, dataformats='NHWC'):
+        """
+        Log a value to tensorboard or wandb.
+        Parameters
+        ----------
+        name: str
+            name of value
+        value: float
+            value to log
+        step: int
+            step to log value at
+        type: str
+            type of value to log (scalar, image, histogram, etc.)
+        """
+
+        if self.logger_type == 'tensorboard':
+            if dtype == 'scalar':
+                self.tsw.add_scalar(name, value, step)
+            elif dtype == 'histogram':
+                self.tsw.add_histogram(name, value, step)
+            elif dtype == 'images':
+                self.tsw.add_images(name, value, step, dataformats=dataformats)
+        elif self.logger_type == 'wandb':
+            if dtype == 'scalar':
+                self.wdb.log({name: value}, step=step)
+            elif dtype == 'histogram':
+                self.wdb.log({name: wandb.Histogram(value)}, step=step)
+            elif dtype == 'images':
+                self.wdb.log({name: [wandb.Image(value)]}, step=step)
 
     def create_output_folders(self):
         os.makedirs(self.out_folder, exist_ok=True)
@@ -60,7 +123,11 @@ class Logger():
             with open(config_file_path, 'w') as f:
                 OmegaConf.save(self.cfg, f)
         else:
-            logger.warning('Config file already exists. Not overwriting')
+            new_config_file_path = osp.join(self.out_folder, 'config_latest_run.yaml')
+            if not osp.exists(new_config_file_path):
+                with open(new_config_file_path, 'w') as f:
+                    OmegaConf.save(self.cfg, f)
+            logger.warning('Config file already exists. Not overwriting config.yaml. Save settings to config_latest_run.yaml.')
             
     def get_latest_checkpoint(self):
         """Get filename of latest checkpoint if it exists."""

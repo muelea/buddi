@@ -1,4 +1,5 @@
 import torch
+from loguru import logger as guru
 
 def build_optimizer(cfg, optimizer_type, params):
     """
@@ -19,6 +20,11 @@ def build_optimizer(cfg, optimizer_type, params):
             params=params,
             lr=cfg.adam.lr, 
             weight_decay=cfg.adam.weight_decay
+        )
+    elif optimizer_type.lower() == 'lbfgs':
+        optimizer = torch.optim.LBFGS(
+            params=params,
+            lr=cfg.lbfgs.lr
         )
     else:
         raise NotImplementedError

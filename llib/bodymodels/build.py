@@ -60,6 +60,8 @@ def build_bodymodel(
             joint_mapper = build_joint_mapper(
                 joint_mapper_cfg.type, joint_mapper_cfg)
             smpl_args['joint_mapper'] = joint_mapper
+            if eval(f'joint_mapper_cfg.{joint_mapper_cfg.type}.use_face_contour'):
+                smpl_args['use_face_contour'] = True 
 
         # create smpl model
         if smpl_args['age'] == 'adult':

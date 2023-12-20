@@ -92,9 +92,13 @@ class SingleDataset(Dataset):
             self.action_label_dict = json.load(open(label_path, 'r'))
         else:
             self.action_label_dict = None
+
+        self.set_feature_vec()
+
+    def set_feature_vec(self):
         # create feature member variables
         feature_cfg = self.dataset_cfg.features
-        feature_vec = np.ones(self.len).astype(np.bool)
+        feature_vec = np.ones(self.len).astype(bool)
         self.is_itw = feature_cfg.is_itw * feature_vec
         self.has_dhhc_class = feature_cfg.has_dhhc_class * feature_vec
         self.has_dhhc_sig = feature_cfg.has_dhhc_sig * feature_vec
@@ -121,14 +125,27 @@ class SingleDataset(Dataset):
                 **self.dataset_cfg, 
                 split=self.split,
                 body_model_type=self.body_model_type
-            ).load()
+            ).load(
+                processed_fn_ext='_diffusion.pkl'  
+            )
         elif self.dataset_name == 'chi3d':
             from .preprocess.chi3d import CHI3D
             dataset = CHI3D(
                 **self.dataset_cfg, 
                 split=self.split,
                 body_model_type=self.body_model_type
-            ).load()
+            ).load(
+                processed_fn_ext='_diffusion.pkl'  
+            )
+        elif self.dataset_name == 'hi4d':
+            from .preprocess.hi4d import HI4D
+            dataset = HI4D(
+                **self.dataset_cfg, 
+                split=self.split,
+                body_model_type=self.body_model_type
+            ).load(
+                processed_fn_ext='_diffusion.pkl'  
+            )
         else:
             raise NotImplementedError
             
@@ -312,16 +329,16 @@ class SingleDataset(Dataset):
         #h1id = 1-h0id
 
         # crop image using both bounding boxes
-        h1_bbox, h2_bbox = item[f'bbox_h0'], item[f'bbox_h1']
-        bbox = self.join_bbox(h1_bbox, h2_bbox) if h1_bbox is not None else None
-        # cast bbox to int
-        bbox = np.array(bbox).astype(int)
-        h1_bbox = np.array(h1_bbox).astype(int)
-        h2_bbox = np.array(h2_bbox).astype(int)
-        
+        #h1_bbox, h2_bbox = item[f'bbox_h0'], item[f'bbox_h1']
+        #if 'flickr_bbox' in item.keys():
+        #    bbox = item['flickr_bbox'].astype(int)
+        #else:
+        #    import ipdb; ipdb.set_trace()
 
         # Load image and resize directly before cropping, because of speed
         if self.image_processing.load_image:
+            bbox_join = self.join_bbox(bbox[0], bbox[1])
+            bbox_join = np.array(bbox_join).astype(int)
             orig_img = cv2.imread(item['imgpath'])
             height, width = orig_img.shape[:2]
 
@@ -381,9 +398,6 @@ class SingleDataset(Dataset):
             'action_name': action_name,
             'action': action,
             'contact_index': contact_index,
-            'bbox_h0': h1_bbox,
-            'bbox_h1': h2_bbox,
-            'bbox_h0h1': bbox,
             'imgname_fn': item['imgname'],
             'imgname_fn_out': img_out_fn,
             'img_height': img_height,
@@ -391,156 +405,117 @@ class SingleDataset(Dataset):
             'sample_index': index,
         }
 
-        if 'binary_contact' in item.keys():
-            gen_target['binary_contact'] = item['binary_contact']
-
         cam_target = {}
         if 'cam_rot' in item.keys():
             if item['cam_rot'] is not None:
                 cam_target = {
-                    'pitch': np.array(item['cam_rot'][0]),
-                    'yaw': np.array(item['cam_rot'][1]),
-                    'roll': np.array(item['cam_rot'][2]),
-                    'tx': np.array(item['cam_transl'][0]),
-                    'ty': np.array(item['cam_transl'][1]),
-                    'tz': np.array(item['cam_transl'][2]),
+                    'cam_rot': np.array(item['cam_rot']),
+                    'cam_transl': np.array(item['cam_transl']),
                     'fl': np.array(item['fl']),
                     'ih': np.array(item['img_height']),
                     'iw': np.array(item['img_width']),
                 }
 
-        # we need to invert the scale parameter, since it's transformed in smpla 
-        # to: scale = -1.0 / (1.0 + torch.exp((scale - 0.5) * 20)) + 1.0 
-        # We also want the scale to be in the range of 0 to 1.
-        """
-        for k in ['betas_h0', 'betas_h1']:
-            y = item[k][[-1]]
-            if y <= 0:
-                y = 0 
-            elif y >= 1:
-                y = 1
-            else:
-                y = (np.log((1 / (-y + 1)) -1) / 20) + 0.5
-            item[k][[-1]] = y
-        """
-
-        # compute heat between two meshes
-        """"
-        v1 = torch.from_numpy(item['vertices_h0']).unsqueeze(0).to('cuda')
-        v2 = torch.from_numpy(item['vertices_h1']).unsqueeze(0).to('cuda')
-        dists = pcl_pcl_pairwise_distance(v1, v2, squared=False)
-        contact_heat = torch.zeros_like(item['contact_map']).float()
-        for r1 in self.rid_to_vid.keys():
-            for r2 in self.rid_to_vid.keys():
-                contact_heat[r1, r2] = dists[:, self.rid_to_vid[r1]][:, :, self.rid_to_vid[r2]].min()
-        """
-        if 'vertices_h0h1_contact_heat' in item.keys():
-            bev_contact_heat = item['vertices_h0h1_contact_heat']
-        else:
-            bev_contact_heat = np.zeros((75, 75)).astype(np.float32)
 
         if 'contact_map' in item.keys():
             contact_map = item['contact_map']
         else:
-            contact_map = np.zeros((75, 75)).astype(np.bool)
+            contact_map = np.zeros((75, 75)).astype(bool)
     
 
         human_target = {}
-        if 'body_pose_h0' in item.keys():
-            # first order them with respect to the x coordinate
-            h0id = 0 if item['transl_h0'][0] <= item['transl_h1'][0] else 1
-            h1id = 1-h0id
+        # first order them with respect to the x coordinate
+        # and swap if augmentation is set to true
+        #if 'pgt_smplx_transl' in item.keys():
+        #    transl_param = item['pgt_smplx_transl']
+        #elif 'bev_smplx_transl' in item.keys():
+        #    transl_param = item['bev_smplx_transl']
+        #elif 'pgt_transl' in item.keys():
+        #    transl_param = item['pgt_transl']
+        #elif 'transl_smpl' in item.keys():
+        #    transl_param = item['transl_smpl']
+        #elif 'transl' in item.keys():
+        #    transl_param = item['transl'][:,0,:]
+        #else:
+        #    raise ValueError('No pgt_smplx_transl in item keys')
 
-            # augment if set to true
-            if swap:
-                h0id, h1id = h1id, h0id
+        if 'FlickrCI3D' in item['imgpath']:
+            transl_param = item[f'pgt_{self.body_model_type}_transl']
+        elif 'CHI3D' in item['imgpath']:
+            transl_param = item['transl'].squeeze(1)
+        elif 'Hi4D' in item['imgpath']:
+            transl_param = item[f'transl_{self.body_model_type}']
+        else:
+            raise NotImplementedError
 
-            if h0id == 1:
-                bev_contact_heat = bev_contact_heat.T
-                contact_map = contact_map.T
-                gen_target['bbox_h0'], gen_target['bbox_h1'] = gen_target['bbox_h1'], gen_target['bbox_h0']
-            if item['body_pose_h0'] is not None:
-                human_target = { 
-                    'contact_map': contact_map,
-                    'bev_contact_heat': bev_contact_heat, 
-                    #'bbox_h0': item['bbox_h0'],
-                    'global_orient_h0': item[f'global_orient_h{h0id}'],
-                    'body_pose_h0': item[f'body_pose_h{h0id}'],
-                    'transl_h0': item[f'transl_h{h0id}'],
-                    'translx_h0': item[f'transl_h{h0id}'][[0]],
-                    'transly_h0': item[f'transl_h{h0id}'][[1]],
-                    'translz_h0': item[f'transl_h{h0id}'][[2]],
-                    'betas_h0': item[f'betas_h{h0id}'][:10],
-                    'scale_h0': item[f'betas_h{h0id}'][[-1]],
-                    'joints_h0': item[f'joints_h{h0id}'],
-                    'vertices_h0': item[f'vertices_h{h0id}'],
-                    'bev_keypoints_h0': item[f'bev_keypoints_h{h0id}'],
-                    'bev_orig_vertices_h0': item[f'bev_orig_vertices_h{h0id}'],
-                    'op_keypoints_h0': item[f'op_keypoints_h{h0id}'],
-                    'keypoints_h0': item[f'vitpose_keypoints_h{h0id}'], # added it's the used keypoints
-                    'vitpose_keypoints_h0': item[f'vitpose_keypoints_h{h0id}'],
-                    #'bbox_h1': item['bbox_h1'],
-                    'global_orient_h1': item[f'global_orient_h{h1id}'],
-                    'body_pose_h1': item[f'body_pose_h{h1id}'],
-                    'transl_h1': item[f'transl_h{h1id}'],
-                    'translx_h1': item[f'transl_h{h1id}'][[0]],
-                    'transly_h1': item[f'transl_h{h1id}'][[1]],
-                    'translz_h1': item[f'transl_h{h1id}'][[2]],
-                    'betas_h1': item[f'betas_h{h1id}'][:10],
-                    'scale_h1': item[f'betas_h{h1id}'][[-1]],
-                    'joints_h1': item[f'joints_h{h1id}'],
-                    'vertices_h1': item[f'vertices_h{h1id}'],
-                    'bev_keypoints_h1': item[f'bev_keypoints_h{h1id}'],
-                    'bev_orig_vertices_h1': item[f'bev_orig_vertices_h{h1id}'],
-                    'op_keypoints_h1': item[f'op_keypoints_h{h1id}'],
-                    'vitpose_keypoints_h1': item[f'vitpose_keypoints_h{h1id}'],
-                    'keypoints_h1': item[f'vitpose_keypoints_h{h1id}'], # added it's the used keypoints
-                }
-                
-        if 'bev_features_h0' in item.keys():
-            human_target['bev_features_h0'] = item[f'bev_features_h{h0id}']
-            human_target['bev_features_h1'] = item[f'bev_features_h{h1id}']
-            kpmax = max(item[f'op_keypoints_h{h0id}'][:,:2].max(), item[f'op_keypoints_h{h1id}'][:,:2].max())
-            human_target['op_keypoints_h0'] = item[f'op_keypoints_h{h0id}'][:,:2].flatten().astype(np.float32) / kpmax
-            human_target['op_keypoints_h1'] = item[f'op_keypoints_h{h1id}'][:,:2].flatten().astype(np.float32) / kpmax
+        h0id = 0 if transl_param[0][0] <= transl_param[1][0] else 1
+        h1id = 1-h0id
+        if swap:
+            h0id, h1id = h1id, h0id # augment if set to true
+        idxs = [h0id, h1id]
+        if h0id == 1:
+            contact_map = contact_map.T
+            #gen_target['bbox'] = gen_target['bbox'][idxs]
 
-        # only if available load pseudo ground truth
-        pseudogt_target = {}
-        if 'pseudogt_betas_h0' in item.keys():
-            if 'pseudogt_scale_h0' in item.keys():
-                if item['pseudogt_scale_h0'] is not None:
-                    scale_plain_h0 = -1.0 / (1.0 + torch.exp((item[f'pseudogt_scale_h{h0id}'] - 0.5) * 20)) + 1.0
-                    scale_plain_h1 = -1.0 / (1.0 + torch.exp((item[f'pseudogt_scale_h{h1id}'] - 0.5) * 20)) + 1.0
-                    betas_h0 = item[f'pseudogt_betas_h{h0id}']
-                    betas_h1 = item[f'pseudogt_betas_h{h1id}']
-            else:
-                scale_plain_h0 = item[f'pseudogt_betas_h{h0id}'][[-1]]
-                scale_plain_h1 = item[f'pseudogt_betas_h{h1id}'][[-1]]
-                scale_plain_h0 = torch.zeros(1) #-1.0 / (1.0 + torch.exp((torch.zeros(1) - 0.5) * 20)) + 1.0
-                scale_plain_h1 = torch.zeros(1) #-1.0 / (1.0 + torch.exp((torch.zeros(1) - 0.5) * 20)) + 1.0
-                betas_h0 = item[f'pseudogt_betas_h{h0id}']
-                betas_h1 = item[f'pseudogt_betas_h{h1id}']
+        # prefix and body model type to get correct key
+        if 'FlickrCI3D' in item['imgpath']:
+            human_target = {
+                'contact_map': contact_map, 
+                'pgt_global_orient': item[f'pgt_{self.body_model_type}_global_orient'][idxs],
+                'pgt_body_pose': item[f'pgt_{self.body_model_type}_body_pose'][idxs],
+                'pgt_transl': item[f'pgt_{self.body_model_type}_transl'][idxs],
+                'pgt_betas': item[f'pgt_{self.body_model_type}_betas'][idxs],
+                'pgt_scale': item[f'pgt_{self.body_model_type}_scale'][idxs], 
+                'bev_global_orient': item[f'bev_{self.body_model_type}_global_orient'][idxs],
+                'bev_body_pose': item[f'bev_{self.body_model_type}_body_pose'][idxs],
+                'bev_transl': item[f'bev_{self.body_model_type}_transl'][idxs],
+                'bev_betas': item[f'bev_{self.body_model_type}_betas'][idxs],
+                'bev_scale': item[f'bev_{self.body_model_type}_scale'][idxs][:,None],
+            }
+        elif 'CHI3D' in item['imgpath']:
+            human_target = {
+                'contact_map': contact_map, 
+                'pgt_global_orient': item[f'global_orient_cam'][idxs,0],
+                'pgt_body_pose': item[f'body_pose'][idxs,0],
+                'pgt_transl': item[f'transl_cam'][idxs,0],
+                'pgt_betas': item[f'betas'][idxs,0],
+                'pgt_scale': item[f'scale'][idxs,0],
+                'bev_global_orient': item[f'bev_{self.body_model_type}_global_orient'][idxs],
+                'bev_body_pose': item[f'bev_{self.body_model_type}_body_pose'][idxs],
+                'bev_transl': item[f'bev_{self.body_model_type}_transl'][idxs],
+                'bev_betas': item[f'bev_{self.body_model_type}_betas'][idxs],
+                'bev_scale': item[f'bev_{self.body_model_type}_scale'][idxs][:,None],
+            }
+            if self.dataset_cfg.load_unit_glob_and_transl:
+                human_target['pgt_global_orient'] = item[f'global_orient'][idxs,0]
+                human_target['pgt_transl'] = item['transl'][idxs,0]
 
-            pseudogt_target = {
-                'pseudogt_betas_h0': betas_h0, 
-                'pseudogt_scale_h0': scale_plain_h0, 
-                'pseudogt_global_orient_h0': item[f'pseudogt_global_orient_h{h0id}'], 
-                'pseudogt_body_pose_h0': item[f'pseudogt_body_pose_h{h0id}'],  
-                'pseudogt_transl_h0': item[f'pseudogt_transl_h{h0id}'], 
-                'pseudogt_translx_h0': item[f'pseudogt_translx_h{h0id}'], 
-                'pseudogt_transly_h0': item[f'pseudogt_transly_h{h0id}'], 
-                'pseudogt_translz_h0': item[f'pseudogt_translz_h{h0id}'], 
-                'pseudogt_betas_h1': betas_h1, #item[f'pseudogt_betas_h{h1id}'], 
-                'pseudogt_scale_h1': scale_plain_h1, 
-                'pseudogt_global_orient_h1': item[f'pseudogt_global_orient_h{h1id}'], 
-                'pseudogt_body_pose_h1': item[f'pseudogt_body_pose_h{h1id}'],  
-                'pseudogt_transl_h1': item[f'pseudogt_transl_h{h1id}'], 
-                'pseudogt_translx_h1': item[f'pseudogt_translx_h{h1id}'], 
-                'pseudogt_transly_h1': item[f'pseudogt_transly_h{h1id}'], 
-                'pseudogt_translz_h1': item[f'pseudogt_translz_h{h1id}'], 
+        elif 'Hi4D' in item['imgpath']:
+            human_target = {
+                'contact_map': contact_map, 
+                # 'pgt_global_orient': item[f'global_orient_{self.body_model_type}'][idxs].astype(np.float32),
+                'pgt_global_orient': item[f'global_orient_cam_{self.body_model_type}'][idxs].astype(np.float32),
+                'pgt_body_pose': item[f'body_pose_{self.body_model_type}'][idxs].astype(np.float32),
+                # 'pgt_transl': item[f'transl_{self.body_model_type}'][idxs].astype(np.float32),
+                'pgt_transl': item[f'transl_cam_{self.body_model_type}'][idxs].astype(np.float32),
+                'pgt_betas': item[f'betas_{self.body_model_type}'][idxs].astype(np.float32),
+                'pgt_scale': np.zeros((2,1))[idxs].astype(np.float32),
+                'bev_global_orient': item[f'bev_{self.body_model_type}_global_orient'][idxs],
+                'bev_body_pose': item[f'bev_{self.body_model_type}_body_pose'][idxs],
+                'bev_transl': item[f'bev_{self.body_model_type}_transl'][idxs],
+                'bev_betas': item[f'bev_{self.body_model_type}_betas'][idxs],
+                'bev_scale': item[f'bev_{self.body_model_type}_scale'][idxs][:,None],
             }
 
-        target = {**gen_target, **cam_target, **human_target, **pseudogt_target, **ds_features}
+            if self.dataset_cfg.load_unit_glob_and_transl:
+                human_target['pgt_global_orient'] = item[f'global_orient_{self.body_model_type}'][idxs].astype(np.float32)
+                human_target['pgt_transl'] = item[f'transl_{self.body_model_type}'][idxs].astype(np.float32)
+
+        else:
+            raise NotImplementedError
+                
+
+        target = {**gen_target, **cam_target, **human_target, **ds_features}
 
         target = self.to_tensors(target)
 

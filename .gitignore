@@ -8,6 +8,8 @@ condorlog
 demo/out
 demo/buddi 
 demo/optimization
+demo/diffusion
+llib_old 
 
 *.swp
 

@@ -62,6 +62,7 @@ class Losses:
     keypoint2d: L2Loss = L2Loss(type="l2", weighted=True, squared=True)
     init_pose: L2Loss = L2Loss(type="l2", squared=True)
     init_shape: L2Loss = L2Loss(type="l2", squared=True)
+    init_transl: L2Loss = L2Loss(type="l2", squared=True)
     kl: AnnealLoss = AnnealLoss(type="")
     pseudogt_pose: L2Loss = L2Loss(type="l2", squared=True)
     pseudogt_shape: L2Loss = L2Loss(type="l2", squared=True)

@@ -132,6 +132,12 @@ def parse_args():
         help="skip skip n steps to next t every x steps. E.g. max-t = 1000 and skip-steps = 10 would set t to 1000, 1090, 1080, etc.",
     )
     parser.add_argument(
+        "--eta",
+        default=0.0,
+        type=float,
+        help="eta value to use for sampling",
+    )
+    parser.add_argument(
         "--body-model-utils-folder",
         type=str,
         default="essentials/body_model_utils/",
@@ -154,6 +160,29 @@ def parse_args():
         default=False,
         action="store_true",
         help="Run the evaluation on a sampled batch.",
+    )
+    parser.add_argument(
+        "--render-width",
+        default=200,
+        type=int,
+        help="width of the rendered image",
+    )
+    parser.add_argument(
+        "--render-height",
+        default=256,
+        type=int,
+        help="height of the rendered image",
+    )
+    parser.add_argument(
+        '--render-floor',
+        default=False,
+        action='store_true',
+        help='render floor in visualization'
+    )
+    parser.add_argument(
+        '--render-high-res',
+        action='store_true',
+        help='render high resolution images with floor'
     )
     parser.add_argument("--batch_size", default=16, type=int)
 
@@ -307,7 +336,7 @@ def save_batch_gifs(
     print(f"SAVED {len(verts)} RENDERS TO {output_folder}")
 
 
-def run_sampling(cfg, cmd_args, diffusion_module):
+def run_sampling(cfg, cmd_args, diffusion_module, eta=0.0):
     num_batches = round(cmd_args.num_samples / cmd_args.batch_size)
 
     if cmd_args.inpaint:
@@ -335,7 +364,7 @@ def run_sampling(cfg, cmd_args, diffusion_module):
         if cmd_args.max_t < 0
         else np.arange(1, cmd_args.max_t, cmd_args.skip_steps)[::-1]
     )
-    return batch_sample(
+    output = batch_sample(
         num_batches,
         diffusion_module,
         T,
@@ -343,7 +372,14 @@ def run_sampling(cfg, cmd_args, diffusion_module):
         conditions=C,
         condition_params=cmd_args.inpaint_params,
         sampling_function=sampling_function,
+        eta=eta
     )
+
+    if cmd_args.inpaint:
+        x_ts, x_starts = output
+        return x_ts, x_starts, given_vertices
+    else:
+        return output
 
 
 @torch.no_grad()
@@ -354,6 +390,12 @@ def main(cfg, cmd_args):
     SKIP_STEPS = cmd_args.skip_steps
     MAX_IMAGES = cmd_args.max_images_render
     INPAINT = cmd_args.inpaint
+
+    RENDER_HIGH_RES = cmd_args.render_high_res
+    if RENDER_HIGH_RES:
+        cmd_args.render_width = 800
+        cmd_args.render_height = 1024
+        cmd_args.render_floor = True
 
     T = CUSTOM_SCHEDULE[MAX_T] if MAX_T < 0 else np.arange(1, MAX_T, SKIP_STEPS)[::-1]
     OUTPUT_FOLDER = create_output_folder(
@@ -385,7 +427,12 @@ def main(cfg, cmd_args):
 
     diffusion_module = setup_diffusion_module(cfg, cmd_args)
 
-    x_ts, x_starts = run_sampling(cfg, cmd_args, diffusion_module)
+    output = run_sampling(cfg, cmd_args, diffusion_module, eta=cmd_args.eta)
+
+    if INPAINT:
+        x_ts, x_starts, given_vertices = output
+    else:
+        x_ts, x_starts = output
 
     final_vertices = x_starts["final"]["vertices"]
     print("final verts shape", final_vertices.shape)
@@ -393,19 +440,19 @@ def main(cfg, cmd_args):
 
     if cmd_args.save_vis:
         # render results
-        renderer = build_renderer()
+        renderer = build_renderer(width=cmd_args.render_width, height=cmd_args.render_height)
         faces = diffusion_module.faces_tensor.to("cpu")
-        save_batch_gifs(VIS_FOLDER, renderer, final_vertices, faces, suffix="_gen")
+        save_batch_gifs(VIS_FOLDER, renderer, final_vertices, faces, suffix="_gen", show_ground=cmd_args.render_floor)
     #     render_images(final_vertices, diffusion_module, MAX_IMAGES, OUTPUT_FOLDER)
 
     if INPAINT:
         # write vertices to file
-        print("given verts shape", given_vertices.shape)
-        inpaint_info = {"gt_vertices": given_vertices, "params": params, "mask": mask}
-        with open(f"{OUTPUT_FOLDER}/inpaint_info.pkl", "wb") as f:
-            pickle.dump(inpaint_info, f)
+        #print("given verts shape", given_vertices.shape)
+        #inpaint_info = {"gt_vertices": given_vertices, "params": params, "mask": mask}
+        #with open(f"{OUTPUT_FOLDER}/inpaint_info.pkl", "wb") as f:
+        #    pickle.dump(inpaint_info, f)
         if cmd_args.save_vis:
-            save_batch_gifs(VIS_FOLDER, renderer, given_vertices, faces, suffix="_gt")
+            save_batch_gifs(VIS_FOLDER, renderer, given_vertices, faces, suffix="_gt", show_ground=cmd_args.render_floor)
     #         render_images(
     #             given_vertices, diffusion_module, 1, OUTPUT_FOLDER, img_prefix="gt_"
     #         )

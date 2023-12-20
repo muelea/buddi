@@ -176,54 +176,104 @@ class Trainer(nn.Module):
                 batch[k] = v
         return batch
 
+    def expand_batch(self, batch, padding):
+        """Expand batch elements by padding value."""
+        # for each element in batch add zeros along axis 0 to match pad size
+        for k, v in batch.items():
+            if isinstance(v, torch.Tensor):
+                batch[k] = torch.cat([v, torch.zeros((padding, *v.shape[1:]), device=self.device)], dim=0)
+            elif isinstance(v, dict):
+                batch[k] = self.expand_batch(v, padding)
+            elif isinstance(v, list):
+                batch[k] = v + [v[0]] * padding
+            else:
+                print(k, v)
+                #raise NotImplementedError
+
+        return batch
+
+
     @torch.no_grad()
     def validate(self, is_training=True):
         """Validate all datasets."""
 
         # set model to evaluation mode
         self.train_module.eval()
-
-        self.train_module.evaluator.reset()
-
-        # load validation datasets
         drop_last = True if is_training else False
-        val_loader = DataLoader(
-            self.train_module.val_ds,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.train_cfg.num_workers,
-            pin_memory=self.train_cfg.pin_memory,
-            drop_last=drop_last
-        )
 
-        # validate
-        for batch_idx, batch in enumerate(val_loader):
-            if batch_idx == 0:
-                batch = self.dict_to_device(batch)
-                self.train_module.single_validation_step(batch)
-        
-        self.train_module.evaluator.final_accumulate_step()
-        if is_training:
-            # get main validation metric
-            #ckpt_metric_name = self.train_module.evaluator.cfg.checkpoint_metric
-            #ckpt_metric = torch.tensor(self.train_module.evaluator.accumulator[ckpt_metric_name]).mean()
-            ckpt_metric = self.train_module.evaluator.ckpt_metric_value
-            self.logger.tsw.add_scalar(f'val/ckpt_metric', ckpt_metric, self.steps)
+        ckpt_metric = 0.0
+        if self.train_module.val_ds is not None:
+            for val_ds_name, val_ds in self.train_module.val_ds.items():
 
-            # add metric to tensorboard
-            for k, v in self.train_module.evaluator.accumulator.items():
-                tbk = f'loss/{k}' if 'loss' in k else f'metric/{k}'
-                self.logger.tsw.add_scalar(f'val/{tbk}', v, self.steps)
-            
+                self.train_module.evaluator.reset()
+
+                # check if dataset is large enough for batch size
+                expand_batch = False
+                if len(val_ds) < self.batch_size:
+                    guru.warning(f'Validation dataset {val_ds_name} is smaller than batch size {self.batch_size}. Expanding batch.')
+                    expand_batch = True
+                    drop_last = False
+
+                # load validation datasets
+                val_loader = DataLoader(
+                    val_ds,
+                    batch_size=self.batch_size,
+                    shuffle=False,
+                    num_workers=self.train_cfg.num_workers,
+                    pin_memory=self.train_cfg.pin_memory,
+                    drop_last=drop_last
+                )
+
+                # validate
+                for batch_idx, batch in enumerate(val_loader):
+                    
+
+                    if batch_idx == 0:
+                        batch = self.dict_to_device(batch)
+                        batch = self.expand_batch(batch, self.batch_size - len(val_ds)) if expand_batch else batch
+                        self.train_module.single_validation_step(batch)
+                
+                self.train_module.evaluator.final_accumulate_step()
+
+                if is_training:
+                    # get main validation metric
+                    #ckpt_metric_name = self.train_module.evaluator.cfg.checkpoint_metric
+                    #ckpt_metric = torch.tensor(self.train_module.evaluator.accumulator[ckpt_metric_name]).mean()
+                    ckpt_metric = self.train_module.evaluator.ckpt_metric_value
+                    # self.logger.tsw.add_scalar(f'val/ckpt_metric', ckpt_metric, self.steps)
+                    self.logger.log('scalar', f'val_setting/{val_ds_name}_lr', self.optimizer.param_groups[0]['lr'], self.steps)
+                    self.logger.log('scalar', f'val_setting/{val_ds_name}_ckpt_metric', ckpt_metric, self.steps)
+                    self.logger.log('scalar', f'val_setting/{val_ds_name}_epoch', self.epoch, self.steps)
+
+                    # add metric to tensorboard
+                    for k, v in self.train_module.evaluator.accumulator.items():
+                        tbk = f'loss/{k}' if 'loss' in k else f'metric/{k}'
+                        # self.logger.tsw.add_scalar(f'val/{tbk}', v, self.steps)
+                        self.logger.log('scalar', f'val/{val_ds_name}_{tbk}', v, self.steps)
+
+                    val_tb_output = self.train_module.evaluator.tb_output
+                    if val_tb_output is not None:
+                        # render_per_ds = {f'{val_ds_name}_{k}': v for k, v in val_tb_output['images'].items()}
+                        self.add_summary_images(
+                            val_tb_output['images'], 
+                            split='val', 
+                            max_images=min(12, self.batch_size), 
+                            ds_name=val_ds_name
+                        )
+                        # self.add_summary_images(render_per_ds, split='val', max_images=min(12, self.batch_size))
+
+                    # self.train_module.train()
+                    # return ckpt_metric
+
+                else:
+                    # add print results on validation set
+                    for k, v in self.train_module.evaluator.accumulator.items():
+                        guru.info(f'Validation Set Error: {k} = {v.mean():.4f}')
+
+        if is_training:            
             self.train_module.train()
-
             return ckpt_metric
-           
-        else:
 
-            # add print results on validation set
-            for k, v in self.train_module.evaluator.accumulator.items():
-                guru.info(f'Validation Set Error: {k} = {v.mean():.4f}')
 
 
     def train_one_epoch(self):
@@ -245,10 +295,10 @@ class Trainer(nn.Module):
         data_loader = DataLoader(
             self.train_module.train_ds,
             batch_size=self.batch_size,
-            shuffle=False,
+            shuffle=False, # suffling is done in data class
             num_workers=self.train_cfg.num_workers,
             pin_memory=self.train_cfg.pin_memory,
-            drop_last=False,
+            drop_last=False, # was false for bs 64
             sampler=sampler
         )
         
@@ -284,10 +334,13 @@ class Trainer(nn.Module):
             # print and log loss values  
             #self.logger.print_loss_dict(loss_dict, self.epoch, self.steps)
             for loss_name, loss_value in loss_dict.items():
-                self.logger.tsw.add_scalar(f'train/{loss_name}', loss_value, self.steps)
+                # self.logger.tsw.add_scalar(f'train/{loss_name}', loss_value, self.steps)
+                self.logger.log('scalar', f'train/{loss_name}', loss_value, self.steps)
 
             # save training summaries
-            self.logger.tsw.add_scalar(f'train_setting/lr', self.optimizer.param_groups[0]['lr'], self.steps)
+            # self.logger.tsw.add_scalar(f'train_setting/lr', self.optimizer.param_groups[0]['lr'], self.steps)
+            self.logger.log('scalar', f'train_setting/lr', self.optimizer.param_groups[0]['lr'], self.steps)
+            self.logger.log('scalar', f'train_setting/epoch', self.epoch, self.steps)
             #if 'histograms' in output.keys():
             #    self.append_histrogram_data(output['histograms'], add_model_weights=True)
 
@@ -297,10 +350,11 @@ class Trainer(nn.Module):
                 guru.info(f'Add train summary ({self.epoch}/{self.max_epochs} epochs; {self.steps} steps) ...')
 
                 if 'images' in output.keys():
-                    self.add_summary_images(output['images'], split='train', max_images=min(64, self.batch_size))
+                    self.add_summary_images(output['images'], split='train', max_images=min(12, self.batch_size))
                 for name, values in self.histograms.items(): # add histograms
                     if len(values) > 0:
-                        self.logger.tsw.add_histogram(name, torch.cat(values, dim=0), self.steps)
+                        # self.logger.tsw.add_histogram(name, torch.cat(values, dim=0), self.steps)
+                        self.logger.log('histogram', name, torch.cat(values, dim=0), self.steps)
                         self.histograms[name] = []
 
             # validate and save checkpoint
@@ -309,21 +363,42 @@ class Trainer(nn.Module):
                 guru.info(f'Run validation ({self.epoch}/{self.max_epochs} epochs; {self.steps} steps) ...')
 
                 ckpt_metric = self.validate()
-                val_output = self.train_module.evaluator.tb_output
+                # val_output = self.train_module.evaluator.tb_output
 
                 # save validation images
-                if val_output is not None:
-                    self.add_summary_images(val_output['images'], split='val', max_images=min(64, self.batch_size))
+                # if val_output is not None:
+                    # self.add_summary_images(val_output['images'], split='val', max_images=min(12, self.batch_size))
 
                 # save checkpoint
                 self.logger.save_checkpoint(self.train_module, self.optimizers_dict,
                     self.epoch, batch_idx+1, self.batch_size, self.steps, ckpt_metric)
 
-    def add_summary_images(self, output, split='train', max_images=32):
+    def add_summary_images(self, output, split='train', max_images=32, ds_name=''):
         """Write summary to Tensorboard."""
+        # if isinstance(output, dict):
+        #     for k, v in output.items():
+        #         images = self.train_module.render_output(v, max_images=max_images)
+        #         for img_name, img in images.items():
+        #             if self.logger.logger_type == 'tensorboard':
+        #                 img = torch.from_numpy(img).unsqueeze(0)[..., :3] / 255
+        #             else:
+        #                 img = img[:,:,:3]
+        #             self.logger.log(
+        #                 'images', f'{split}/{k}_{img_name}', img, self.steps, dataformats='NHWC'
+        #             )
+        #             self.logger.log(
+        #                 'scalar', f'{split}/{k}_{img_name}_epoch', self.epoch, self.steps
+        #             )
+        # else:
         images = self.train_module.render_output(output, max_images=max_images)
         for img_name, img in images.items():
-            img = torch.from_numpy(img).unsqueeze(0)[..., :3] / 255
-            self.logger.tsw.add_images(
-                f'{split}/{img_name}', img, self.steps, dataformats='NHWC'
+            if self.logger.logger_type == 'tensorboard':
+                img = torch.from_numpy(img).unsqueeze(0)[..., :3] / 255
+            else:
+                img = img[:,:,:3]
+            self.logger.log(
+                'images', f'{split}/{ds_name}{img_name}', img, self.steps, dataformats='NHWC'
             )
+            #self.logger.log(
+            #    'scalar', f'{split}/{ds_name}{img_name}_epoch', self.epoch, self.steps
+            #)

@@ -63,7 +63,7 @@ class PyRenderer(object):
 
     def add_ground(self):
         ground = pyrender.Mesh.from_trimesh(
-            make_checkerboard(up="y", alpha=1.0), smooth=False
+            make_checkerboard(up="y", color0=[0.95,0.95,0.95], color1=[0.95,0.95,0.95], alpha=1.0), smooth=False
         )
         self.ground_node = self.scene.add(ground, name="ground")
         pose = make_4x4_pose(torch.eye(3), torch.tensor([0.0, 10.0, 0.0])).numpy()
@@ -246,6 +246,16 @@ def make_4x4_pose(R, t):
     pose[..., :3, 3] = t
     return pose
 
+def make_1x1_pose(R, t):
+    """
+    :param R (*, 3, 3)
+    :param t (*, 3)
+    """
+    dims = R.shape[:-2]
+    pose = torch.eye(4).reshape(*(1,) * len(dims), 1, 1).repeat(*dims, 1, 1)
+    pose[..., :3, :3] = R
+    pose[..., :3, 3] = t
+    return pose
 
 def make_rotation(euler_angles, order="xyz"):
     order = order.lower()
@@ -303,7 +313,7 @@ def make_checkerboard(
                 cur_verts = np.stack([us, vs, zs], axis=-1)  # (4, 3)
 
             cur_faces = np.array(
-                [[0, 1, 3], [1, 2, 3], [0, 3, 1], [1, 3, 2]], dtype=np.int
+                [[0, 1, 3], [1, 2, 3], [0, 3, 1], [1, 3, 2]], dtype=int
             )
             cur_faces += 4 * (i * num_cols + j)  # the number of previously added verts
             use_color0 = (i % 2 == 0 and j % 2 == 0) or (i % 2 == 1 and j % 2 == 1)
@@ -314,8 +324,8 @@ def make_checkerboard(
             faces.append(cur_faces)
             face_colors.append(cur_colors)
 
-    verts = np.concatenate(verts, axis=0).astype(np.float32)
-    faces = np.concatenate(faces, axis=0).astype(np.float32)
-    face_colors = np.concatenate(face_colors, axis=0).astype(np.float32)
+    verts = np.concatenate(verts, axis=0).astype(float)
+    faces = np.concatenate(faces, axis=0).astype(float)
+    face_colors = np.concatenate(face_colors, axis=0).astype(float)
 
     return trimesh.Trimesh(verts, faces, face_colors=face_colors, process=False)

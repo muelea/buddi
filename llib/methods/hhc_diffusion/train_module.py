@@ -6,6 +6,7 @@ import math
 import cv2
 from llib.models.diffusion.resample import UniformSampler
 from collections import namedtuple
+import loguru as guru
 from llib.utils.threed.conversion import (
     axis_angle_to_rotation6d,
     rotation6d_to_axis_angle,
@@ -18,10 +19,10 @@ from pytorch3d.transforms import (
     matrix_to_rotation_6d,
 )
 
-Tokens = namedtuple(
-    "Tokens",
-    ["orient", "pose", "shape", "betas", "scale", "transl", "contact", "keypoints"],
-)
+#Tokens = namedtuple(
+#    "Tokens",
+#    ["orient", "pose", "betas", "scale", "transl"]
+#)
 
 
 class TrainModule(nn.Module):
@@ -46,7 +47,13 @@ class TrainModule(nn.Module):
         self.tra_cfg = cfg.model.regressor.diffusion_transformer
         self.bs = cfg.batch_size
         self.nh = 2  # number of humans
-        self.human_params = ["orient", "pose", "shape", "transl"]
+        self.human_params = ["orient", "pose", "shape", "transl"] # shape = concat((betas, scale))
+
+        # check if guidance params are full bev or not
+        self.is_full_bev_guidance = False
+        if 'bev' in self.exp_cfg.guidance_params:
+            self.is_full_bev_guidance = True
+
 
         self.train_ds = train_dataset
         self.val_ds = val_dataset
@@ -67,10 +74,27 @@ class TrainModule(nn.Module):
 
         self.schedule_sampler = UniformSampler(diffusion)
 
-        self.meshes_to_render = ["input", "input_noise", "sampled_0"]
+
+        self.meshes_to_render = {
+            'single_step_random_t': ["input", "input_noise", "input_with_guidance","sampled_0"],
+            'single_step_25_t': ["input", "input_noise", "input_with_guidance", "sampled_0"],
+            'single_step_50_t': ["input", "input_noise", "input_with_guidance", "sampled_0"],
+            'single_step_75_t': ["input", "input_noise", "input_with_guidance", "sampled_0"],
+            'unconditional': ['sampled_0'],
+            'conditional': ['sampled_0', 'input_with_guidance'],
+        }
+
+        # add a key for each validation dataset
+        base_keys_meshes_to_render = list(self.meshes_to_render.keys())
+        if self.val_ds is not None:
+            for ds_name in self.val_ds.keys():
+                for kk in base_keys_meshes_to_render:
+                    self.meshes_to_render[f'{ds_name}_{kk}'] = self.meshes_to_render[kk]
+        
         self.meshcols = {
             "input": ["light_blue1", "light_blue6"],
             "input_noise": ["light_red1", "light_red6"],
+            "input_with_guidance": ["light_green1", "light_green6"],
             "sampled_0": ["light_yellow1", "light_yellow6"],
         }
 
@@ -161,9 +185,6 @@ class TrainModule(nn.Module):
 
         return param
 
-    def prep_body_shape(self, params):
-        return params
-
     def prep_translation(
         self,
         transl,
@@ -196,46 +217,21 @@ class TrainModule(nn.Module):
 
         return transl
 
-    def get_params(self, batch, human_idx, prefix=""):
+
+    def get_params(self, batch, prefix=""):
         """ 
         Get parameters from batch.
         prefix: '' (uses bev params) or 'pseudogt_' uses optimized meshes
         """
-        assert human_idx in ["h0", "h1"], f"Invalid human index: {human_idx}."
-        assert prefix in [
-            "",
-            "bev",
-            "pseudogt_",
-            "pseudogt",
-            "pgt",
-        ], f"Invalid prefix: {prefix}."
-
-        if prefix in ["", "bev"]:
-            prefix = ""
-        elif prefix in ["pseudogt", "pgt"]:
-            prefix = "pseudogt_"
-
-        if prefix == "pseudogt_":
-            # get translation params
-            tx = batch[f"{prefix}translx_{human_idx}"]
-            ty = batch[f"{prefix}transly_{human_idx}"]
-            tz = batch[f"{prefix}translz_{human_idx}"]
-            transl = torch.cat((tx, ty, tz), dim=-1)  # (3,)
-        else:
-            transl = batch[f"{prefix}transl_{human_idx}"]  # (3,)
-
-        keypoints = batch[f"vitpose_keypoints_{human_idx}"]
-        bs = keypoints.shape[0]
-
-        return Tokens(
-            orient=batch[f"{prefix}global_orient_{human_idx}"].unsqueeze(1),
-            pose=batch[f"{prefix}body_pose_{human_idx}"].unsqueeze(1),
-            shape=None,
-            betas=batch[f"{prefix}betas_{human_idx}"].unsqueeze(1),
-            scale=batch[f"{prefix}scale_{human_idx}"].unsqueeze(1),
-            transl=transl.unsqueeze(1),
-            contact=None,
-            keypoints=keypoints.reshape(bs, -1).unsqueeze(1),
+        
+        assert prefix in ['pgt', 'bev']
+            
+        return dict(
+            orient=batch[f"{prefix}_global_orient"],
+            pose=batch[f"{prefix}_body_pose"],
+            betas=batch[f"{prefix}_betas"],
+            scale=batch[f"{prefix}_scale"],
+            transl=batch[f"{prefix}_transl"],
         )
 
     def update_camera_params(self, batch):
@@ -264,65 +260,58 @@ class TrainModule(nn.Module):
                 bs, self.nh, -1
             )
 
-        # unpack shape params
-        betas = shape[..., :-1]
-        scale = shape[..., -1:]
-
-        # unpack translation params
-        tx, ty, tz = transl.chunk(3, dim=-1)
-
         # forward human 1
         smpl_h0 = self.body_model(
             global_orient=orient[:, 0],
             body_pose=pose[:, 0],
-            betas=betas[:, 0],
-            scale=scale[:, 0],
-            translx=tx[:, 0],
-            transly=ty[:, 0],
-            translz=tz[:, 0],
+            betas=shape[:, 0, :-1],
+            scale=shape[:, 0, -1:],
+            transl=transl[:, 0],
         )
 
         # forward human 2
         smpl_h1 = self.body_model(
             global_orient=orient[:, 1],
             body_pose=pose[:, 1],
-            betas=betas[:, 1],
-            scale=scale[:, 1],
-            translx=tx[:, 1],
-            transly=ty[:, 1],
-            translz=tz[:, 1],
+            betas=shape[:, 1, :-1],
+            scale=shape[:, 1, -1:],
+            transl=transl[:, 1],
         )
 
         return smpl_h0, smpl_h1
 
-    def preprocess_batch(self, batch, in_data=None):
+    def preprocess_batch(self, batch, in_data=None, clone=False):
         """
         Preprocess batch for training and return all parameters used in diffusion training.
         """
 
         # experiment setup
         if in_data is None:
-            in_data = self.exp_cfg.in_data  # pgt or bev
+            prefix = self.exp_cfg.in_data  # pgt or bev
+        else:
+            prefix = in_data
         contact_rep = (
             self.exp_cfg.contact_rep
         )  # region to region contact representation (binary or heat)
 
-        # smpl input params (select bev or pseudo ground truth as input)
-        x = [self.get_params(batch, f"h{ii}", prefix=in_data) for ii in range(self.nh)]
-        # x_bev = [self.get_params(batch, f'h{ii}', prefix='bev') for ii in range(self.nh)]
-
-        return {
-            "orient": torch.cat([y.orient for y in x], dim=1),
-            "pose": torch.cat([y.pose for y in x], dim=1),
-            "shape": torch.cat(
-                [torch.cat((y.betas, y.scale), dim=-1) for y in x], dim=1
-            ),
-            "transl": torch.cat([y.transl for y in x], dim=1),
-            "contact": self.prep_contact_map(batch[contact_rep]),  # contact map/heat
-            "keypoints": torch.cat([y.keypoints for y in x], dim=1),
+        out = {
+            "orient": batch[f"{prefix}_global_orient"],
+            "pose": batch[f"{prefix}_body_pose"],
+            #"betas": batch[f"{prefix}_betas"],
+            #"scale": batch[f"{prefix}_scale"],
+            "shape": torch.cat((batch[f"{prefix}_betas"], batch[f"{prefix}_scale"]), axis=2),
+            "transl": batch[f"{prefix}_transl"],
+            #"contact": self.prep_contact_map(batch[contact_rep]), 
             "action": batch["action"][:, None].float(),
             "action_name": batch["action_name"],
         }
+
+        # clone parameters if clone is true 
+        if clone:
+            for pp in ['orient', 'pose', 'shape', 'transl']:
+                out[pp] = out[pp].clone()
+
+        return out
 
     def reset_orient_and_transl(
         self,
@@ -376,12 +365,12 @@ class TrainModule(nn.Module):
             torch.cat(
                 (
                     self.body_model(
-                        betas=params["shape"][:, 0, :-1],
-                        scale=params["shape"][:, 0, -1:],
+                        betas=params["betas"][:, 0, :],
+                        scale=params["scale"][:, 0, :],
                     ).joints[:, [0], :],
                     self.body_model(
-                        betas=params["shape"][:, 1, :-1],
-                        scale=params["shape"][:, 1, -1:],
+                        betas=params["betas"][:, 1, :],
+                        scale=params["scale"][:, 1, :],
                     ).joints[:, [0], :],
                 ),
                 dim=1,
@@ -433,11 +422,11 @@ class TrainModule(nn.Module):
             torch.cat(
                 (
                     self.body_model(
-                        betas=params["shape"][:, 0, :-1],
+                        betas=params["shape"][:, 0, :10],
                         scale=params["shape"][:, 0, -1:],
                     ).joints[:, [0], :],
                     self.body_model(
-                        betas=params["shape"][:, 1, :-1],
+                        betas=params["shape"][:, 1, :10],
                         scale=params["shape"][:, 1, -1:],
                     ).joints[:, [0], :],
                 ),
@@ -454,10 +443,9 @@ class TrainModule(nn.Module):
         )
 
         pose = self.prep_body_pose(params["pose"], rotrep)
-        shape = self.prep_body_shape(params["shape"])
 
         # update params with new values
-        new_values = {"orient": orient, "pose": pose, "shape": shape, "transl": transl}
+        new_values = {"orient": orient, "pose": pose, "transl": transl}
         params.update(new_values)
 
         return params
@@ -469,6 +457,7 @@ class TrainModule(nn.Module):
         guidance_all_nc=None,
         guidance_no_nc=None,
         guidance_params=None,
+        clone=False
     ):
         """
         :param batch (dictionary from train/val set)
@@ -497,24 +486,34 @@ class TrainModule(nn.Module):
         # torch.rand(1) samples from [0,1)
         all_or_none = torch.rand(self.bs)
         noise_chance = self.exp_cfg.guidance_param_nc * torch.ones(self.bs)
-        cond1 = all_or_none < guidance_all_nc
-        cond2 = all_or_none < guidance_all_nc + guidance_no_nc
+        cond1 = all_or_none <= guidance_all_nc
+        cond2 = (all_or_none > guidance_all_nc) & (all_or_none <= guidance_all_nc + guidance_no_nc)
         noise_chance[cond1] = 1.0
-        noise_chance[~cond1 & (cond2)] = 0.0
+        noise_chance[cond2] = 0.0
 
         null_value = 0.0
 
-        for idx in range(self.nh):
-            for pp in ["orient", "pose", "shape", "transl"]:
-                if f"{pp}_h{idx}" in guidance_params:
-                    param = batch[pp][:, idx, :]
-                    param[torch.rand(self.bs) < noise_chance] = null_value
-                    guidance[f"{pp}_h{idx}"] = param
-                if f"{pp}_bev_h{idx}" in guidance_params:
-                    param = batch[f"{pp}_bev"][:, idx, :]
-                    param[torch.rand(self.bs) < noise_chance] = null_value
-                    guidance[f"{pp}_bev_h{idx}"] = param
+        # for idx in range(self.nh):
+        #     for pp in ["orient", "pose", "shape", "transl"]:
+        #         if f"{pp}_h{idx}" in guidance_params:
+        #             param = batch[pp][:, idx, :]
+        #             param[torch.rand(self.bs) < noise_chance] = null_value
+        #             guidance[f"{pp}_h{idx}"] = param
+        #         if f"{pp}_bev_h{idx}" in guidance_params:
+        #             param = batch[f"{pp}_bev"][:, idx, :]
+        #             param[torch.rand(self.bs) < noise_chance] = null_value
+        #             guidance[f"{pp}_bev_h{idx}"] = param
 
+        if self.is_full_bev_guidance:
+            guidance = self.cast_smpl(self.preprocess_batch(batch, in_data='bev', clone=clone))
+            guidance.pop('action')
+            guidance.pop('action_name')
+            guidance = self.split_humans(guidance)
+        elif len(guidance_params) == 0:
+            pass
+        else:
+            raise NotImplementedError
+        
         if "contact" in guidance_params:
             param = batch["contact"]
             param[torch.rand(self.bs) < noise_chance] = null_value
@@ -524,6 +523,10 @@ class TrainModule(nn.Module):
             param = batch["action"]
             param[torch.rand(self.bs) < noise_chance] = null_value
             guidance["action"] = param
+
+        # set guidance param to None if prob allows it
+        for kk in guidance.keys():
+            guidance[kk][torch.rand(self.bs) < noise_chance] = null_value      
 
         return guidance
 
@@ -566,7 +569,137 @@ class TrainModule(nn.Module):
             out.update({pp: value})
         return out
 
-    def sampling_loop(self, x, y, ts, inpaint=None, log_steps=1, return_latent_vec=False):
+    def sampling_loop(self, x, y, ts, inpaint=None, log_steps=1, return_latent_vec=False, eta=1.0):
+        """Sample from diffusion model."""
+
+        sbs = x[0].body_pose.shape[0]
+        x_ts, x_starts, x_latent = {}, {}, {}  # x_ts is mesh with noise, x_starts the denoised mesh
+
+        # setup inpaint params if provided 
+
+        last_step = ts[-1]
+        for ii_idx,  ii in enumerate(ts):
+
+            x = {
+                "orient": torch.cat(
+                    [
+                        axis_angle_to_rotation6d(x[0].global_orient.unsqueeze(1)),
+                        axis_angle_to_rotation6d(x[1].global_orient.unsqueeze(1)),
+                    ],
+                    dim=1,
+                ),
+                "pose": torch.cat(
+                    [
+                        axis_angle_to_rotation6d(
+                            x[0].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                        ).view(sbs, 1, -1),
+                        axis_angle_to_rotation6d(
+                            x[1].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                        ).view(sbs, 1, -1),
+                    ],
+                    dim=1,
+                ),
+                "shape": torch.cat(
+                    [
+                        torch.cat((x[0].betas, x[0].scale), dim=-1).unsqueeze(1),
+                        torch.cat((x[1].betas, x[1].scale), dim=-1).unsqueeze(1),
+                    ],
+                    dim=1,
+                ),
+                "transl": torch.cat(
+                    [
+                        x[0].transl.unsqueeze(1), 
+                        x[1].transl.unsqueeze(1)
+                    ], dim=1
+                ),
+            }
+
+            if inpaint is not None:
+                for k in inpaint['mask'].keys():
+                    x[k][inpaint['mask'][k]] = inpaint['values'][k][inpaint['mask'][k]]
+
+            # reset orientation and translation
+            #x = self.reset_orient_and_transl(x)
+
+            # timestep
+            t = torch.tensor([ii] * self.bs).to(self.cfg.device)
+            if ii_idx + 1 < len(ts):
+                prev_t = torch.tensor([ts[ii_idx + 1]] * self.bs).to(self.cfg.device)
+            else:
+                prev_t = None
+            # add noise to params
+            #diffused_params = {}
+            input_noise = {}
+            #for pp, v in x.items():
+            #    input_noise[pp] = torch.randn_like(v) #if noise is None else noise[pp]
+            #    diffused_params[pp] = self.diffusion.q_sample(v, t, input_noise[pp])
+            #diffused_smpls = self.get_smpl(diffused_params)
+
+            # merge input parameters with guidance (only used for visualization)        
+            # diffused_with_guidance_params = self.merge_params(diffused_params, y)
+            # diffused_with_guidance_smpls = self.get_smpl(diffused_with_guidance_params)
+
+
+            # forward model / transformer
+            x = self.split_humans(x)
+            pred = self.model(
+                x=x,  # diffused_tokens_dict,
+                timesteps=self.diffusion._scale_timesteps(t),
+                guidance=y,
+                return_latent_vec=return_latent_vec,
+            )
+
+            if return_latent_vec:
+                pred, latent_vec = pred
+
+            # predicted tokens to params and smpl bodies
+            denoised_params = self.concat_humans(pred)
+            denoised_smpls = self.get_smpl(denoised_params)
+
+            # get q(x_{t-1}| x_t, x_0)
+            for k in pred.keys():
+                sample, noise = self.diffusion.p_sample_ddim(pred[k], t, prev_t, x[k], eta=eta)
+                x[k] = sample
+                input_noise[k] = noise
+
+            input_noise = self.concat_humans(input_noise)
+            x = self.concat_humans(x)
+            x = self.get_smpl(x)
+            #if self.diffusion.model_mean_type == "start_x":
+            #    denoised_tokens = pred
+
+            diffusion_output = {
+                "denoised_params": denoised_params,
+                "denoised_smpls": denoised_smpls,
+                "diffused_with_guidance_smpls": x, #diffused_with_guidance_smpls,
+                "diffused_smpls": x,
+                "gt_noise": input_noise,
+                "model_prediction": pred,
+                'model_latent_vec': latent_vec if return_latent_vec else None,
+            }
+
+            # update x_start_tokens
+            #x = diffusion_output["denoised_smpls"]
+
+            # log results
+            if ii % log_steps == 0:
+                x_ts[ii] = diffusion_output["diffused_smpls"]
+                x_starts[ii] = diffusion_output["denoised_smpls"]
+                
+                if return_latent_vec:
+                    x_latent[ii] = diffusion_output["model_latent_vec"]
+
+            if ii == last_step:
+                x_starts["final"] = diffusion_output["denoised_smpls"]
+                x_ts["final"] = diffusion_output["diffused_smpls"]
+
+        if return_latent_vec:
+            return x_ts, x_starts, x_latent
+        else:
+            return x_ts, x_starts
+
+
+    def sampling_loop_orig(self, x, y, ts, inpaint=None, log_steps=1, return_latent_vec=False):
         """Sample from diffusion model."""
 
         sbs = x[0].body_pose.shape[0]
@@ -647,6 +780,207 @@ class TrainModule(nn.Module):
         else:
             return x_ts, x_starts
 
+    def sampling_loop_ddim(self, x, y, ts, inpaint=None, log_steps=100, return_latent_vec=False):
+        """Sample from diffusion model."""
+
+        sbs = x[0].body_pose.shape[0]
+        x_ts, x_starts, x_latent = {}, {}, {}  # x_ts is mesh with noise, x_starts the denoised mesh
+
+        last_step = ts[-1]
+
+        x = {
+            "orient": torch.cat(
+                [
+                    axis_angle_to_rotation6d(x[0].global_orient.unsqueeze(1)),
+                    axis_angle_to_rotation6d(x[1].global_orient.unsqueeze(1)),
+                ],
+                dim=1,
+            ),
+            "pose": torch.cat(
+                [
+                    axis_angle_to_rotation6d(
+                        x[0].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                    ).view(sbs, 1, -1),
+                    axis_angle_to_rotation6d(
+                        x[1].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                    ).view(sbs, 1, -1),
+                ],
+                dim=1,
+            ),
+            "shape": torch.cat(
+                [
+                    torch.cat((x[0].betas, x[0].scale), dim=-1).unsqueeze(1),
+                    torch.cat((x[1].betas, x[1].scale), dim=-1).unsqueeze(1),
+                ],
+                dim=1,
+            ),
+            "transl": torch.cat(
+                [x[0].transl.unsqueeze(1), x[1].transl.unsqueeze(1)], dim=1
+            ),
+        }
+
+        # add noise to params
+        diffused_params = {}
+        input_noise = {}
+        t = torch.tensor([999] * self.bs).to(self.cfg.device)
+        for pp, v in x.items():
+            input_noise[pp] = torch.randn_like(v)
+            diffused_params[pp] = self.diffusion.q_sample(v, t, input_noise[pp])
+        diffused_smpls = self.get_smpl(diffused_params)
+
+        # merge input parameters with guidance (only used for visualization)        
+        diffused_with_guidance_params = self.merge_params(diffused_params, y)
+        diffused_with_guidance_smpls = self.get_smpl(diffused_with_guidance_params)
+
+        # concatenate human parameters when using H0H1 token setup
+        if self.exp_cfg.token_setup == "H0H1":
+            split_dims = [diffused_params[pp].shape[-1] for pp in self.human_params]
+            self.split_dims = split_dims
+            diffused_params = {
+                "human": torch.cat(
+                    [diffused_params[pp] for pp in self.human_params], dim=-1
+                )
+            }
+
+        # forward model / transformer
+        #x = self.split_humans(diffused_params) 
+        #x = diffused_params
+        x = self.split_humans(diffused_params)
+        for ii_idx, ii in enumerate(ts):
+            """
+            x = {
+                "orient": torch.cat(
+                    [
+                        axis_angle_to_rotation6d(x[0].global_orient.unsqueeze(1)),
+                        axis_angle_to_rotation6d(x[1].global_orient.unsqueeze(1)),
+                    ],
+                    dim=1,
+                ),
+                "pose": torch.cat(
+                    [
+                        axis_angle_to_rotation6d(
+                            x[0].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                        ).view(sbs, 1, -1),
+                        axis_angle_to_rotation6d(
+                            x[1].body_pose.unsqueeze(1).view(sbs, 1, -1, 3)
+                        ).view(sbs, 1, -1),
+                    ],
+                    dim=1,
+                ),
+                "shape": torch.cat(
+                    [
+                        torch.cat((x[0].betas, x[0].scale), dim=-1).unsqueeze(1),
+                        torch.cat((x[1].betas, x[1].scale), dim=-1).unsqueeze(1),
+                    ],
+                    dim=1,
+                ),
+                "transl": torch.cat(
+                    [x[0].transl.unsqueeze(1), x[1].transl.unsqueeze(1)], dim=1
+                ),
+            }
+            """
+
+            # do the inpainting
+            #if inpaint is not None:
+            #    for k, mm in inpaint["mask"].items():
+            #        x[k][mm] = inpaint["values"][k][mm]
+
+            # reset orientation and translation
+            #x = self.reset_orient_and_transl(x)
+            #x['transl_h1'] -= x['transl_h0']
+            #x['transl_h0'] = torch.zeros_like(x['transl_h0'])
+            #transl[:, 1, :] -= transl[:, 0, :]
+            #transl[:, 0, :] = 0.0
+            
+            # timestep
+            t = torch.tensor([ii] * self.bs).to(self.cfg.device)
+            if ii_idx + 1 < len(ts):
+                prev_t = torch.tensor([ts[ii_idx + 1]] * self.bs).to(self.cfg.device)
+            else:
+                prev_t = None
+
+            # diffusion forward (add noise) and backward (remove noise) process
+            #diffusion_output = self.diffuse_denoise(
+            #    x=x, y=y, t=t, return_latent_vec=return_latent_vec)
+
+            pred = self.model(
+                x=x,  # diffused_tokens_dict,
+                timesteps=self.diffusion._scale_timesteps(t),
+                guidance=y,
+                return_latent_vec=return_latent_vec,
+            )
+
+            if return_latent_vec:
+                pred, latent_vec = pred
+
+            for pp, v in pred.items():
+                pred_prev_t = self.diffusion.p_sample_ddim(v, t, prev_t, x[pp])
+                x[pp] = pred_prev_t
+            
+            if self.diffusion.model_mean_type == "start_x":
+                denoised_tokens = pred
+            elif self.diffusion.model_mean_type == "epsilon":
+                # in this case denoised_params are the predicted noise
+                # we need to remove the noise from the input params
+                denoised_tokens = {}
+                for k, pred_noise in pred.items():
+                    denoised_tokens[k] = x[k] - pred_noise
+            else:
+                raise NotImplementedError
+
+        
+            # split tokens when using H0H1 token setup
+            """
+            if self.exp_cfg.token_setup == "H0H1":
+                for ii in range(self.nh):
+                    token = denoised_tokens.pop(f"human_h{ii}")
+                    params = torch.split(token, split_dims, -1)
+                    for pp, vv in zip(self.human_params, params):
+                        denoised_tokens[f"{pp}_h{ii}"] = vv
+
+                    # split predicted noise
+                    if self.diffusion.model_mean_type == "epsilon":
+                        token = pred.pop(f"human_h{ii}")
+                        params = torch.split(token, split_dims, -1)
+                        for pp, vv in zip(self.human_params, params):
+                            pred[f"{pp}_h{ii}"] = v
+            """
+
+            #if self.diffusion.model_mean_type == "epsilon":
+            #    pred = self.concat_humans(pred)
+
+            # predicted tokens to params and smpl bodies
+            denoised_params = self.concat_humans(denoised_tokens)
+            denoised_smpls = self.get_smpl(denoised_params)
+            pred_prev_t_params = self.concat_humans(x)
+            pred_prev_t_smpls = self.get_smpl(pred_prev_t_params)
+
+            #if inpaint is not None:
+                #denoised_params = diffusion_output["denoised_params"]
+            #    for k, mm in inpaint["mask"].items():
+            #        denoised_params[k][mm] = inpaint["values"][k][mm]
+                #diffusion_output["denoised_smpls"] = self.get_smpl(denoised_params)
+
+            # update x_start_tokens
+            #x = diffusion_output["denoised_smpls"]
+
+            # log results
+            if ii % log_steps == 0:
+                x_ts[ii] = pred_prev_t_smpls #diffusion_output["diffused_smpls"]
+                x_starts[ii] = denoised_smpls #diffusion_output["denoised_smpls"]
+                
+                if return_latent_vec:
+                    x_latent[ii] = latent_vec #diffusion_output["model_latent_vec"]
+
+            if ii == last_step:
+                x_starts["final"] = denoised_smpls #diffusion_output["denoised_smpls"]
+                x_ts["final"] = pred_prev_t_smpls #diffusion_output["diffused_smpls"]
+
+        if return_latent_vec:
+            return x_ts, x_starts, x_latent
+        else:
+            return x_ts, x_starts
+
     def diffuse_denoise(self, x, y, t, noise=None, return_latent_vec=False):
         """Add noise to input and forward through diffusion model."""
 
@@ -658,7 +992,7 @@ class TrainModule(nn.Module):
             diffused_params[pp] = self.diffusion.q_sample(v, t, input_noise[pp])
         diffused_smpls = self.get_smpl(diffused_params)
 
-        # merge input parameters with guidance (only used for visualization)
+        # merge input parameters with guidance (only used for visualization)        
         diffused_with_guidance_params = self.merge_params(diffused_params, y)
         diffused_with_guidance_smpls = self.get_smpl(diffused_with_guidance_params)
 
@@ -726,11 +1060,14 @@ class TrainModule(nn.Module):
             "model_prediction": pred,
             'model_latent_vec': latent_vec if return_latent_vec else None,
         }
-
+    
     def single_training_step(self, batch):
         """Implement a single training step."""
 
         # select and transform input (e.g. bev or pseudo gt)
+        guidance_params = self.get_guidance_params(batch)
+
+        # overwrite batch with corret input        
         batch = self.cast_smpl(self.preprocess_batch(batch))
 
         # target / gt params
@@ -738,7 +1075,7 @@ class TrainModule(nn.Module):
         target_smpls = self.get_smpl(target_params)
 
         # get guidance params
-        guidance_params = self.get_guidance_params(batch)
+        # guidance_params = self.get_guidance_params(guidance_batch)
 
         # sample t
         t, weights = self.schedule_sampler.sample(self.bs, "cuda")
@@ -770,23 +1107,65 @@ class TrainModule(nn.Module):
             if "action" in guidance_params.keys()
             else t.tolist()
         )
-        output_dict = {
-            "images": [
-                self.get_tb_image_data(
-                    diffusion_output["denoised_smpls"],
-                    diffusion_output["diffused_with_guidance_smpls"],
-                    target_smpls,
-                    0,
-                ),
-                imglabel,
-            ],
+
+        if len(guidance_params) > 0:
+            diffused_output_with_guidance_for_rendering = diffusion_output["diffused_with_guidance_smpls"]
+        else:
+            diffused_output_with_guidance_for_rendering = None
+        output_dict = { 
+            "images": { 
+                "single_step_random_t": [
+                    self.get_tb_image_data(
+                        diffusion_output["denoised_smpls"],
+                        diffusion_output["diffused_smpls"],
+                        diffused_output_with_guidance_for_rendering,
+                        #diffusion_output["diffused_with_guidance_smpls"],
+                        target_smpls,
+                        0,
+                    ), imglabel]
+            }
         }
 
         return total_loss, loss_dict, output_dict
 
+    def sample_from_model(self, timesteps, log_freq, guidance_params={}, batch_size=None):
+
+        """Sample from the diffusion model without conditioning starting from noise"""
+
+        bs = self.cfg.batch_size if batch_size is None else batch_size
+        device = self.cfg.device
+
+        # create random noise to start with
+        noise = {
+            "orient": torch.randn([bs, 2, self.orient_dim]).to(device),
+            "pose": torch.randn([bs, 2, self.pose_dim]).to(device),
+            "shape": torch.randn([bs, 2, self.shape_dim]).to(device),
+            "transl": torch.randn([bs, 2, self.transl_dim]).to(device),
+        }
+        noise_smpls = self.get_smpl(noise)
+
+        # run diffusion sampling loop
+        x_ts, x_starts = self.sampling_loop(
+            x=noise_smpls, y=guidance_params, ts=timesteps, log_steps=log_freq, return_latent_vec=False
+        )
+
+        return x_ts, x_starts
+    
     @torch.no_grad()
     def single_validation_step(self, batch):
         """Implement the full validation precedure. Use val_dataset."""
+
+        self.evaluator.tb_output = {
+            'images': {}
+        }
+
+        # get guidance params - do not add noise to params at validation
+        guidance_params_no_noise = self.get_guidance_params(
+            batch, guidance_param_nc=0.0, guidance_all_nc=0.0, guidance_no_nc=1.0, clone=True
+        )
+        guidance_params_all_noise = self.get_guidance_params(
+            batch, guidance_param_nc=0.0, guidance_all_nc=1.0, guidance_no_nc=0.0, clone=True
+        )
 
         # select and transform input (e.g. bev or pseudo gt)
         batch = self.cast_smpl(self.preprocess_batch(batch))
@@ -796,65 +1175,113 @@ class TrainModule(nn.Module):
         target_smpls = self.get_smpl(target_params)
 
         # get guidance params - do not add noise to params at validation
-        guidance_params = self.get_guidance_params(
-            batch, guidance_param_nc=0.0, guidance_all_nc=0.0, guidance_no_nc=1.0
+        # guidance_params = self.get_guidance_params(
+            # batch, guidance_param_nc=0.0, guidance_all_nc=0.0, guidance_no_nc=1.0
+        # )
+
+
+        ############ unconditional sampling ##############
+        # guru.info('Start sampling unconditional')
+        uncond_ts = np.arange(1, self.diffusion.num_timesteps, 10)[::-1]
+        log_freq = 10
+        x_ts, x_starts = self.sample_from_model(
+            uncond_ts, log_freq, guidance_params_all_noise 
         )
+        self.evaluator.forward_generative_metrics(
+            x_starts['final'], target_smpls
+        )
+        self.evaluator.tb_output['images']['unconditional'] = [
+            self.get_tb_image_data(x_starts['final'], None, None, timestep=0),
+            [''] * len(batch['action_name']),
+        ]
 
-        # add noise to params
-        t, weights = self.schedule_sampler.sample(self.bs, "cuda")
-
-        # diffusion forward (add noise) and backward (remove noise) process
-        diffusion_output = self.diffuse_denoise(x=target_params, y=guidance_params, t=t)
-
-        # compute custom loss for diffusion model predicting x_start
-        if self.diffusion.model_mean_type == "start_x":
-            total_loss, loss_dict = self.criterion(
-                est_smpl=diffusion_output["denoised_smpls"],
-                tar_smpl=target_smpls,
-                est_contact_map=None,
-                tar_contact_map=None,
-                tar_contact_map_binary=None,
+        ############ conditional sampling ##############
+        if len(guidance_params_no_noise) > 0:
+            # guru.info('Start sampling unconditional')
+            cond_ts = np.arange(1, self.diffusion.num_timesteps, 10)[::-1]
+            log_freq = 10
+            x_ts, x_starts = self.sample_from_model(
+                cond_ts, log_freq, guidance_params_no_noise
             )
-        elif self.diffusion.model_mean_type == "epsilon":
-            gt_noise = diffusion_output["gt_noise"]
-            pred_noise = diffusion_output["model_prediction"]
-            loss_dict = {}
-            for k, v in pred_noise.items():
-                loss_dict[f"{k}"] = torch.mean((v - gt_noise[k]) ** 2)
-            total_loss = sum(loss_dict.values())
-        else:
-            raise NotImplementedError
+            guidance_params_no_noise_params = self.concat_humans(guidance_params_no_noise) 
+            guidance_params_no_noise_smpls = self.get_smpl(guidance_params_no_noise_params)
+            self.evaluator.tb_output['images']['conditional'] = [
+                self.get_tb_image_data(x_starts['final'], None, guidance_params_no_noise_smpls, timestep=0),
+                [''] * len(batch['action_name']),
+            ]
 
-        # run evaluation
-        self.evaluator(
-            est_smpl=diffusion_output["denoised_smpls"], tar_smpl=target_smpls,
-        )
+        ############ SAME AS TRAINING STEP ##############
+        # add noise to params
+        # for t_type in ['random', 25, 50, 75]:
+            # if t_type == 'random'
+        for t_type in ['single_step_random_t', '50']:
+            target_params = {x: v.clone() for x, v in target_params.items()}
+            guidance_params_no_noise = {x: v.clone() for x, v in guidance_params_no_noise.items()}
 
-        imglabel = (
-            [f"{tt},{aa}" for tt, aa in zip(t.tolist(), batch["action_name"])]
-            if "action" in guidance_params.keys()
-            else t.tolist()
-        )
+            if t_type != 'single_step_random_t':
+                t = (int(t_type) * torch.ones(self.bs).to(self.cfg.device)).to(torch.int64)
+                t_type = 'single_step_' + t_type + '_t'
+            else:
+                t, weights = self.schedule_sampler.sample(self.bs, self.cfg.device)
 
-        self.evaluator.accumulator["total_loss"] = torch.tensor([0.0])
-        self.evaluator.tb_output = {
-            "images": [
-                self.get_tb_image_data(
-                    diffusion_output["denoised_smpls"],
-                    diffusion_output["diffused_with_guidance_smpls"],
-                    target_smpls,
-                    timestep=0,
-                ),
-                imglabel,
-            ],
-            #'histograms'
-        }
+            # diffusion forward (add noise) and backward (remove noise) process
+            diffusion_output = self.diffuse_denoise(x=target_params, y=guidance_params_no_noise, t=t)
+
+            # compute custom loss for diffusion model predicting x_start
+            if self.diffusion.model_mean_type == "start_x":
+                total_loss, loss_dict = self.criterion(
+                    est_smpl=diffusion_output["denoised_smpls"],
+                    tar_smpl=target_smpls,
+                    est_contact_map=None,
+                    tar_contact_map=None,
+                    tar_contact_map_binary=None,
+                )
+            elif self.diffusion.model_mean_type == "epsilon":
+                gt_noise = diffusion_output["gt_noise"]
+                pred_noise = diffusion_output["model_prediction"]
+                loss_dict = {}
+                for k, v in pred_noise.items():
+                    loss_dict[f"{k}"] = torch.mean((v - gt_noise[k]) ** 2)
+                total_loss = sum(loss_dict.values())
+            else:
+                raise NotImplementedError
+            
+            # run evaluation
+            if t_type == 'single_step_50_t':
+                self.evaluator(
+                    est_smpl=diffusion_output["denoised_smpls"], tar_smpl=target_smpls, t_type=t_type
+                )                
+                self.evaluator.accumulate("total_loss", total_loss.cpu().numpy()[None])
+                
+            imglabel = (
+                [f"{tt},{aa}" for tt, aa in zip(t.tolist(), batch["action_name"])]
+                if "action" in guidance_params_no_noise.keys()
+                else t.tolist()
+            )
+
+            if len(guidance_params_no_noise) > 0:
+                diffused_output_with_guidance_for_rendering = diffusion_output["diffused_with_guidance_smpls"]
+            else:
+                diffused_output_with_guidance_for_rendering = None
+
+            self.evaluator.tb_output['images'][t_type] = [
+                    self.get_tb_image_data(
+                        diffusion_output["denoised_smpls"],
+                        diffusion_output["diffused_smpls"],
+                        diffused_output_with_guidance_for_rendering,
+                        #diffusion_output["diffused_with_guidance_smpls"],
+                        target_smpls,
+                        timestep=0,
+                    ),
+                    imglabel,
+            ]
+
 
     ##############################################################################################
     ############################# CREATE OUTPUT DATA FOR TENSORBOARD #############################
     ##############################################################################################
     def get_tb_image_data(
-        self, sampled_smpls, input_noise_smpls=None, input_smpls=None, timestep=0
+        self, sampled_smpls, input_noise_smpls=None, input_with_guidance=None, input_smpls=None, timestep=0
     ):
         out = {}
         out[f"h0_sampled_{timestep}"] = sampled_smpls[0]
@@ -865,6 +1292,9 @@ class TrainModule(nn.Module):
         if input_noise_smpls is not None:
             out[f"h0_input_noise"] = input_noise_smpls[0]
             out[f"h1_input_noise"] = input_noise_smpls[1]
+        if input_with_guidance is not None:
+            out[f"h0_input_with_guidance"] = input_with_guidance[0]
+            out[f"h1_input_with_guidance"] = input_with_guidance[1]
         return out
 
     def get_tb_histogram_data(self, params):
@@ -969,46 +1399,49 @@ class TrainModule(nn.Module):
                 )
                 self.final_image_out[c0:c1, r0:r1, :] = color_image
 
-    def render_output(self, output, max_images=1):
+    def render_output(self, output_all, max_images=1):
         """Implement logging of training step."""
 
-        output, timesteps = output
+        imgname_img = {}
 
-        num_methods = len(self.meshes_to_render)
-        view_to_row = {
-            -20: 0,
-            20: 1,
-            270: 2,
-        }  # mapping between rendering view and row index in image (per method)
-        num_views = len(view_to_row.keys())
-        ih, iw = self.renderer.ih, self.renderer.iw
-        self.final_image_out = np.zeros(
-            (max_images * ih, num_methods * num_views * iw, 4)
-        )
+        for output_key, output in output_all.items():
+            output, timesteps = output
 
-        # render meshes for outputs
-        for idx, name in enumerate(self.meshes_to_render):
-            if f"h0_{name}" in output.keys():
-                verts_h0 = [
-                    output[f"h0_{name}"].vertices[[iidx]].detach()
-                    for iidx in range(max_images)
-                ]
-                verts_h1 = [
-                    output[f"h1_{name}"].vertices[[iidx]].detach()
-                    for iidx in range(max_images)
-                ]
-                self.render_one_method(
-                    max_images,
-                    verts_h0,
-                    verts_h1,
-                    self.body_model_type,
-                    self.meshcols[name],
-                    self.faces_tensor,
-                    view_to_row,
-                    idx,
-                    timesteps,
-                )
+            num_methods = len(self.meshes_to_render[output_key])
+            view_to_row = {
+                -20: 0,
+                20: 1,
+                270: 2,
+            }  # mapping between rendering view and row index in image (per method)
+            num_views = len(view_to_row.keys())
+            ih, iw = self.renderer.ih, self.renderer.iw
+            self.final_image_out = np.zeros(
+                (max_images * ih, num_methods * num_views * iw, 4)
+            )
 
-        out = {"meshes": self.final_image_out}
+            # render meshes for outputs
+            for idx, name in enumerate(self.meshes_to_render[output_key]):
+                if f"h0_{name}" in output.keys():
+                    verts_h0 = [
+                        output[f"h0_{name}"].vertices[[iidx]].detach()
+                        for iidx in range(max_images)
+                    ]
+                    verts_h1 = [
+                        output[f"h1_{name}"].vertices[[iidx]].detach()
+                        for iidx in range(max_images)
+                    ]
+                    self.render_one_method(
+                        max_images,
+                        verts_h0,
+                        verts_h1,
+                        self.body_model_type,
+                        self.meshcols[name],
+                        self.faces_tensor,
+                        view_to_row,
+                        idx,
+                        timesteps,
+                    )
 
-        return out
+            imgname_img[f'renderings/{output_key}'] = self.final_image_out
+
+        return imgname_img

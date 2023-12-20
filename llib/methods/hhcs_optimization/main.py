@@ -37,7 +37,11 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.benchmark=False
 torch.backends.cudnn.deterministic=True 
 
+
 DEBUG_IMG_NAMES = []
+# image names from test set for slides
+#['persons_7873_0', 'boys_24145_1', 'boys_24145_2', 'boys_52636_0', 'Dance_9253_0', 'Dancing_77_0'] + \
+#['boys_391_0', 'boys_40548_0', 'boys_48032_0', 'boys_83901_0', 'boys_97486_0', 'Couple_2342_0', 'Couple_4765_0', 'Couple_6653_0', 'Couple_9393_0', 'Couple_13467_0']
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -67,6 +71,7 @@ def main(cfg, cmd_args):
         cpid = int(cmd_args.cluster_pid)
         cbs = int(cmd_args.cluster_bs)
         c_item_idxs = np.arange(cpid*cbs, cpid*cbs+cbs)
+        guru.info(f'processing index: {c_item_idxs}')
 
     # save config file and create output folders
     logger = Logger(cfg)
@@ -78,7 +83,7 @@ def main(cfg, cmd_args):
     # create dataloader
     FITTING_DATASETS = build_optimization_datasets(
         datasets_cfg=cfg.datasets,
-        body_model_type=cfg.body_model.type, # necessary to load the correct contact maps
+        body_model_cfg=cfg.body_model, # necessary to load the correct contact maps
     )
     
     for ds in FITTING_DATASETS:
@@ -98,16 +103,18 @@ def main(cfg, cmd_args):
                 # check if item was already processed, if so, skip
                 img_fn_out = item['imgname_fn_out']
                 # keep to debug specific images
-                """
-                if img_fn_out not in DEBUG_IMG_NAMES:
-                    continue
-                """
+                
+                if len(DEBUG_IMG_NAMES) > 0:
+                    if img_fn_out not in DEBUG_IMG_NAMES:
+                        continue
+                
 
                 out_fn_res = osp.join(logger.res_folder, f'{img_fn_out}.pkl')
                 out_fn_img = osp.join(logger.img_folder, f'{img_fn_out}.png')
                 if osp.exists(out_fn_res) and osp.exists(out_fn_img):
                     guru.info(f'Item {img_fn_out} was already processed. Skipping.')
                 else:
+                    guru.info(f'Processing item {img_fn_out} of index {item_idx}.')
                     process_item(cfg, item, logger)
             #except Exception as e:
             #    guru.exception(e)
@@ -120,6 +127,7 @@ def process_item(cfg, item, logger):
     img_fn_out = item['imgname_fn_out']
     out_fn_res = osp.join(logger.res_folder, f'{img_fn_out}.pkl')
     out_fn_img = osp.join(logger.img_folder, f'{img_fn_out}.png')
+    out_fn_mp4 = osp.join(logger.sum_folder, f'{img_fn_out}.mp4')
     out_fn_gif = osp.join(logger.sum_folder, f'{img_fn_out}.gif')
 
     # configuration for optimization
@@ -140,7 +148,7 @@ def process_item(cfg, item, logger):
     # build regressor used to predict diffusion params
     if opti_cfg.use_diffusion:
         from llib.methods.hhc_diffusion.train_module import TrainModule
-        
+
         diffusion_cfg = default_config.copy()
         diffusion_cfg.merge_with(OmegaConf.load(opti_cfg.pretrained_diffusion_model_cfg))
         #diffusion_logger = Logger(diffusion_cfg)
@@ -176,6 +184,13 @@ def process_item(cfg, item, logger):
         device=cfg.device
     ).to(cfg.device)
 
+    # create renderer (for overlay)
+    renderer = Pytorch3dRenderer(
+        cameras = camera.cameras,
+        image_width=item['img_width'],
+        image_height=item['img_height'],
+    )
+
     # create losses
     criterion = HHCOptiLoss(
         losses_cfgs = opti_cfg.losses,
@@ -192,17 +207,14 @@ def process_item(cfg, item, logger):
         batch_size=cfg.batch_size,
         device=cfg.device,
         diffusion_module=diffusion_module,
+        renderer=renderer
     )
 
     # transform input item to human1, human2 and camera dict
-    h0_data, h1_data, cam_data = {}, {}, {}
+    human_data, cam_data = {}, {}
     for k, v in item.items():
-        if '_h0' in k:
-            new_key = k.replace('_h0', '')
-            h0_data[new_key] = v.to(cfg.device)
-        elif '_h1' in k:
-            new_key = k.replace('_h1', '')
-            h1_data[new_key] = v.to(cfg.device)
+        if k in ['global_orient', 'body_pose', 'betas', 'scale', 'transl', 'keypoints', 'op_keypoints', 'joints']:
+            human_data[k] = v.to(cfg.device)
         elif k in ['pitch', 'yaw', 'roll', 'tx', 'ty', 'tz', 'fl', 'ih', 'iw']:
             cam_data[k] = v.to(cfg.device)
         else:
@@ -211,35 +223,29 @@ def process_item(cfg, item, logger):
     # set contact map to none if diffusion is being used a prior 
     contact_map = item['contact_map'] if opti_cfg.use_gt_contact_map \
         else torch.zeros_like(item['contact_map'])
-        
+    
     # the last shape component is used to interpolate between SMIL and SMPL-X
     # since the value is not normalized, we enfore it to be between 0 and 1
     # using a sigmoid function
 
     # optimize each item in dataset
     smpl_output_h1, smpl_output_h2 = optimization_module.fit(
-        init_h1=h0_data,
-        init_h2=h1_data,
+        init_human=human_data,
         init_camera=cam_data,
         contact_map=contact_map,
     )
 
     guru.info(f'Optimization finished for {img_fn_out}. Saving results.')
 
-    # save meshes 
-    v1 = smpl_output_h1.vertices.detach().cpu().numpy()[0]
-    v2 = smpl_output_h2.vertices.detach().cpu().numpy()[0]
-    m1 = trimesh.Trimesh(v1, body_model_h1.faces)
-    m2 = trimesh.Trimesh(v2, body_model_h2.faces)
-    _ = m1.export(osp.join(logger.res_folder, f'{img_fn_out}_h1.obj'))
-    _ = m2.export(osp.join(logger.res_folder, f'{img_fn_out}_h2.obj'))
+    # save iterations
+    if opti_cfg.render_iters:
+        images_to_video(optimization_module.renderings, out_fn_mp4, 30, item['imgpath'])
+
+    # save meshes
+    save_obj(smpl_output_h1, body_model_h1.faces, osp.join(logger.res_folder, f'{img_fn_out}_h1.obj'))
+    save_obj(smpl_output_h2, body_model_h2.faces, osp.join(logger.res_folder, f'{img_fn_out}_h2.obj'))
     
     # visualize results
-    renderer = Pytorch3dRenderer(
-        cameras = camera.cameras,
-        image_width=item['img_width'],
-        image_height=item['img_height'],
-    )
     renderer_newview = Pytorch3dRenderer(
         cameras = camera.cameras,
         image_width=200,
@@ -247,8 +253,7 @@ def process_item(cfg, item, logger):
     )
 
     verts_fit = torch.cat([smpl_output_h1.vertices, smpl_output_h2.vertices], dim=0)
-    verts_bev = torch.cat([item['bev_orig_vertices_h0'].unsqueeze(0), 
-        item['bev_orig_vertices_h1'].unsqueeze(0)], dim=0).to(cfg.device)
+    verts_bev = item['bev_smpl_vertices'].to(cfg.device).float()
     smplx_faces = torch.from_numpy(body_model_h1.faces.astype(np.int32)).to(cfg.device)
     # create smpl model to get smpl faces
     smpl_body_model = smplx.create(
@@ -256,37 +261,37 @@ def process_item(cfg, item, logger):
         model_type='smpl'
     )
     smpl_faces = torch.from_numpy(smpl_body_model.faces.astype(np.int32)).to(cfg.device)
-
+    
     vertices_methods = [verts_fit, verts_bev]
     colors = [['light_blue3', 'light_blue5'], ['light_red3', 'light_red5']]
     imgpath = item['imgpath']
     orig_img = cv2.imread(imgpath)[:,:,::-1].copy().astype(np.float32)
     IMG = add_alpha_channel(orig_img)
-
+    
     # add keypoints to image
     IMGORIG = IMG.copy()
     IMGBEV = IMG.copy()
     h1pp = camera.project(smpl_output_h1.joints)
     h2pp = camera.project(smpl_output_h2.joints)
+    
     for idx, joint in enumerate(h1pp[0]):
         IMGBEV = cv2.circle(IMGBEV, (int(joint[0]), int(joint[1])), 3, (255, 255, 0), 2)
     for idx, joint in enumerate(h2pp[0]):
         IMGBEV = cv2.circle(IMGBEV, (int(joint[0]), int(joint[1])), 3, (255, 255, 0), 2)
 
     # add keypoints to image
-    h1_kp2d = item['vitpose_keypoints_h0']
-    h2_kp2d = item['vitpose_keypoints_h1']
-    keypoints_list = [item['vitpose_keypoints_h0'], item['vitpose_keypoints_h1'], 
-    item['op_keypoints_h0'], item['op_keypoints_h1']]
-    col = [(255, 0, 0), (0, 255, 0), (125, 0, 0), (0, 125, 0)]
+    keypoints_list = [item['vitpose_keypoints'][0], item['vitpose_keypoints'][1], 
+    item['op_keypoints'][0], item['op_keypoints'][1], 
+    item['vitposeplus_keypoints'][0], item['vitposeplus_keypoints'][1]]
+    col = [(255, 0, 0), (0, 255, 0), (125, 0, 0), (0, 125, 0), (55, 0, 0), (0, 55, 0)]
     for idx, kp2d in enumerate(keypoints_list):
         for joint in kp2d:
             IMGBEV = cv2.circle(IMGBEV, (int(joint[0]), int(joint[1])), 3, col[idx], 2)
 
-    h1_bbox = item['bbox_h0'].numpy().astype(np.int32)
-    h2_bbox = item['bbox_h1'].numpy().astype(np.int32)
-    IMGBEV = cv2.rectangle(IMGBEV, (h1_bbox[0], h1_bbox[1]), (h1_bbox[2], h1_bbox[3]), (255, 0, 0), 2)
-    IMGBEV = cv2.rectangle(IMGBEV, (h2_bbox[0], h2_bbox[1]), (h2_bbox[2], h2_bbox[3]), (0, 255, 0), 2)
+    if 'bbox' in item.keys():
+        bbox = item['bbox'].numpy().astype(np.int32)
+        IMGBEV = cv2.rectangle(IMGBEV, (bbox[0,0], bbox[0,1]), (bbox[0,2], bbox[0,3]), (255, 0, 0), 2)
+        IMGBEV = cv2.rectangle(IMGBEV, (bbox[1,0], bbox[1,1]), (bbox[1,2], bbox[1,3]), (0, 255, 0), 2)
 
     imgs_out = []
     for vidx, (verts, meshcol) in enumerate(zip(vertices_methods, colors)):
@@ -333,25 +338,25 @@ def process_item(cfg, item, logger):
 
     # save results 
     output = {
-        'h0': {},
-        'h1': {},
+        'humans': {},
         'cam': {},
     }
+    param_names = []
     for k, v in body_model_h1.named_parameters():
-        if v is not None:
-            output['h0'][k] = v.detach().cpu().numpy()
-        else:
-            print(k,v)
-    for k, v in body_model_h2.named_parameters():
-        if v is not None:
-            output['h1'][k] = v.detach().cpu().numpy()
-        else:
-            print(k,v)
+        param_names.append(k)
+    
+    for k in param_names:
+        if k not in output['humans'].keys():
+            output['humans'][k] = []
+        for idx in range(1,3):
+            v = eval(f'body_model_h{idx}.{k}')
+            if v is not None:
+                output['humans'][k].append(v.detach().cpu().numpy())
+        output['humans'][k] = np.concatenate(output['humans'][k])
+
     for k, v in camera.named_parameters():
         if v is not None:
             output['cam'][k] = v.detach().cpu().numpy()
-        else:
-            print(k,v)
             
     with open(out_fn_res, 'wb') as f:
         pickle.dump(output, f)
@@ -367,7 +372,7 @@ def process_item(cfg, item, logger):
                 verts_centered = verts - vertex_transl_center
                 rendered_img = renderer_newview.render(
                     verts_centered, smplx_faces, 
-                    colors = ['light_red3', 'light_red5'], 
+                    colors = ['light_red3', 'light_blue3'], 
                     body_model='smplx')
                 color_image = rendered_img[0].detach().cpu().numpy() * 255
                 scale = image_out.shape[0] / color_image.shape[0]

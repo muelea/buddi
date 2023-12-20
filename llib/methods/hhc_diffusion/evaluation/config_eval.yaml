@@ -1,0 +1,51 @@
+batch_size: 512
+device: cuda
+logging:
+  base_folder: outdebug/diffusion/
+  run: demo_buddi_v01
+  summaries_freq: 1.0
+  checkpoint_freq: 1.0
+  project_name: 'HumanHumanContactModelTraining'
+  logger: 'tensorboard'
+  run_id: '' 
+datasets:
+  train_names: ['chi3d', 'hi4d', 'flickrci3ds']
+  train_composition: [0.2, 0.2, 0.6]
+  val_names: []
+  flickrci3ds:
+    processed_data_folder: datasets/processed/FlickrCI3D_Signatures
+    pseudogt_folder: hhcs_opti/run4_20231015/results
+  chi3d:
+    original_data_folder: datasets/original/CHI3D
+    processed_data_folder: datasets/processed/CHI3D
+    load_single_camera: false
+    load_unit_glob_and_transl: true
+  hi4d:
+    original_data_folder: datasets/original/Hi4D
+    processed_data_folder: datasets/processed/Hi4D
+    load_single_camera: false
+    load_unit_glob_and_transl: true
+  augmentation:
+    use: true # we swap bodies during training so also do it for evaluation
+  processing:
+    use: false
+    load_image: false
+body_model:
+  type: smplx
+  smpl_family_folder: essentials/body_models
+  smplx:
+    num_vertices: 10498
+    init:
+      batch_size: 1
+      gender: neutral
+      age: kid
+      kid_template_path: essentials/body_models/smil/smplx_kid_template.npy
+      joint_mapper:
+        use: true
+        type: smpl_to_openpose
+        smpl_to_openpose:
+          use_hands: false
+          use_face: false
+          use_face_contour: false
+          openpose_format: coco25
+

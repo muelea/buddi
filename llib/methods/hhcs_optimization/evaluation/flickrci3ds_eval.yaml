@@ -1,0 +1,18 @@
+body_model:
+  type: 'smplx'
+  smplx:
+    init:
+      batch_size: 1
+      gender: 'neutral'
+      age: 'kid'
+      joint_mapper:
+        use: True
+        type: 'smpl_to_openpose'
+        smpl_to_openpose:
+          use_hands: False
+          use_face: False
+camera:
+  type: 'perspective'
+  perspective:
+    afov_horizontal: 60 # inital angular field of view compatible with bev output
+    roll: 180 # inital camera roll compatible with bev output

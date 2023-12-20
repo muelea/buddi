@@ -34,13 +34,6 @@ class SMPLXA(SMPLX):
         self.register_parameter(
             'betas', nn.Parameter(default_betas, requires_grad=True))
 
-        default_transl = torch.zeros([self.batch_size, 1], dtype=self.dtype)
-        self.register_parameter(
-            'translx', nn.Parameter(default_transl, requires_grad=True))
-        self.register_parameter(
-            'transly', nn.Parameter(default_transl, requires_grad=True))
-        self.register_parameter(
-            'translz', nn.Parameter(default_transl, requires_grad=True))
 
     def name(self) -> str:
         return 'SMPL-XA'
@@ -49,23 +42,17 @@ class SMPLXA(SMPLX):
         self,
         betas: Optional[torch.Tensor] = None,
         scale: Optional[torch.Tensor] = None,
-        translx: Optional[torch.Tensor] = None,
-        transly: Optional[torch.Tensor] = None,
-        translz: Optional[torch.Tensor] = None,
+        transl: Optional[torch.Tensor] = None,
         global_orient: Optional[torch.Tensor] = None,
         body_pose: Optional[torch.Tensor] = None,
         **kwargs
     ):
 
-
         betas = betas if betas is not None else self.betas
         scale = scale if scale is not None else self.scale
         betas_smpla = torch.cat([betas, scale], dim=1)
 
-        translx = translx if translx is not None else self.translx
-        transly = transly if transly is not None else self.transly
-        translz = translz if translz is not None else self.translz
-        transl = torch.cat([translx, transly, translz], dim=1)
+        transl = transl if transl is not None else self.transl
 
         body_pose = body_pose if body_pose is not None else self.body_pose
         
@@ -78,7 +65,7 @@ class SMPLXA(SMPLX):
             body_pose=body_pose,
             **kwargs
         )
-       
+
         output = TensorOutput(vertices=body.vertices,
                              joints=body.joints,
                              betas=betas_smpla[:,:-1],

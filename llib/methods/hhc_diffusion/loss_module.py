@@ -209,7 +209,6 @@ class LossModule(nn.Module):
 
 
 
-
         # per human losses
         for hidx in range(len(est_smpl)):
             h = f'_{hidx}'
