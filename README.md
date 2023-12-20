@@ -13,13 +13,13 @@ https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d3
 ... [Flickr Fits](#flickr-fits), we create SMPL-X fits for [FlickrCI3D](https://ci3d.imar.ro) via an optimization method that takes ground-truth contact annotations between two people into account.
 
 ## NEWS!!
-We have a new version of BUDDI with BEV conditioning. This repo is still for the old version of BUDDI. Code updates will follow and be announced here.
+:boom: We have a new version of BUDDI with BEV conditioning :boom:
 
 ## Release status
 
-| BUDDI inference | BUDDI training | Optimization with BUDDI | Flickr Fits |
-| :----: | :----: | :----: | :----: |
-| &check; | &check;  | &check; | &#x2717; |
+| BUDDI inference | BUDDI training | Optimization with BUDDI | Optimization with BUDDI conditional | Training Data / Flickr Fits |
+| :----: | :----: | :----: | :----: | :----: |
+| &check; | &check;  | &check; | &check; | &#x2717; |
 
 
 ## Installation
