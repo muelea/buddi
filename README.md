@@ -2,6 +2,8 @@
 <b> Generative Proxemics: A Prior for 3D Social Interaction from Images </b>\
 [[Project Page](https://muelea.github.io/buddi/)] [[arXiv](https://arxiv.org/abs/2306.09337)]
 
+https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d320a2
+
 ## In this repo you will find ...
 
 ... [BUDDI](#unconditional-sampling), a diffusion model that learned the joint distribution of two people in close proxeminty -- thus a a <b>BUD</b>dies <b>DI</b>ffusion model. BUDDI directly generates [SMPL-X](https://smpl-x.is.tue.mpg.de) body model parameters for two people.
