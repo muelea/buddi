@@ -62,7 +62,7 @@ Run optimization using BUDDI as prior. This script will find all OpenPose Boundi
 python llib/methods/hhcs_optimization/main.py --exp-cfg llib/methods/hhcs_optimization/configs/buddi_cond_bev_demo.yaml --exp-opts logging.base_folder=demo/optimization/buddi_cond_bev_demo datasets.train_names=['demo'] datasets.train_composition=[1.0] datasets.demo.original_data_folder=demo/data/FlickrCI3D_Signatures/demo datasets.demo.image_folder=images model.optimization.pretrained_diffusion_model_ckpt=essentials/buddi/buddi_cond_bev.pt model.optimization.pretrained_diffusion_model_cfg=essentials/buddi/buddi_cond_bev.yaml logging.run=fit_buddi_cond_bev_flickrci3ds
 ```
 
-Run optimization with BUDDI on FlickrCI3D. First follow the data and isntall instructions, then run the commands below. You can use --cluster_pid and --cluster_bs flags to process only a few images or distribute batches of data on a cluster.
+Run optimization with BUDDI on FlickrCI3D. First follow the data and install instructions, then run the commands below. You can use --cluster_pid and --cluster_bs flags to process only a few images or distribute batches of data on a cluster.
 ```
 # run optimization for training split
 python llib/methods/hhcs_optimization/main.py --exp-cfg llib/methods/hhcs_optimization/configs/buddi_cond_bev.yaml --exp-opts logging.base_folder=demo/optimization/buddi_cond_bev logging.run=fit_buddi_cond_bev_flickrci3ds datasets.train_names=['flickrci3ds'] datasets.train_composition=[1.0] datasets.val_names=[] datasets.test_names=[] model.optimization.pretrained_diffusion_model_ckpt=essentials/buddi/buddi_cond_bev.pt model.optimization.pretrained_diffusion_model_cfg=essentials/buddi/buddi_cond_bev.yaml
