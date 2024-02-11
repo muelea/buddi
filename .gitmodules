@@ -1,0 +1,9 @@
+[submodule "third-party/ROMP"]
+	path = third-party/ROMP
+	url = https://github.com/Arthur151/ROMP
+[submodule "third-party/ViTPose"]
+	path = third-party/ViTPose
+	url = https://github.com/ViTAE-Transformer/ViTPose.git
+[submodule "third-party/imar_vision_datasets_tools"]
+	path = third-party/imar_vision_datasets_tools
+	url = https://github.com/sminchisescu-research/imar_vision_datasets_tools.git

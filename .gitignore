@@ -2,6 +2,7 @@
 /essentials
 /datasets/original
 /datasets/processed/**
+essentials_orig
 outdebug
 experiments
 condorlog

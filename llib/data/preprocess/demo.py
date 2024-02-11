@@ -270,14 +270,26 @@ class Demo():
         # annotation / image paths
         img_path = osp.join(self.image_folder, f'{imgname}.{self.image_format}')
         bev_path = osp.join(self.bev_folder, f'{imgname}_0.08.npz')
-        openpose_path = osp.join(self.openpose_folder, f'{imgname}.json')
         vitpose_path = osp.join(self.vitpose_folder, f'{imgname}_keypoints.json')
+        openpose_path = osp.join(self.openpose_folder, f'{imgname}.json')
+
+        guru.info(f'Loading {imgname} from {img_path}')
+        guru.info(f'Loading BEV from {bev_path}')
+        guru.info(f'Loading ViTPose from {vitpose_path}')
+        guru.info(f'Loading OpenPose from {openpose_path}')
 
         # load each annotation file
         IMG = cv2.imread(img_path)
         bev_data = np.load(bev_path, allow_pickle=True)['results'][()]
-        op_data = json.load(open(openpose_path, 'r'))['people']
-        vitpose_data = json.load(open(vitpose_path, 'r'))['people']
+        try:
+            vitpose_data = json.load(open(vitpose_path, 'r'))['people']
+        except:
+            import ipdb; ipdb.set_trace()
+        if not os.path.exists(openpose_path):
+            guru.warning(f'Openpose file does not exist; using ViTPose keypoints only.')
+            op_data = vitpose_data 
+        else:
+            op_data = json.load(open(openpose_path, 'r'))['people']
 
         return img_path, IMG, bev_data, op_data, vitpose_data   
 
@@ -453,7 +465,8 @@ class Demo():
             )
 
             if h0 is None or h1 is None:
-                return None
+                guru.warning(f'No BEV match found for {imgname} - ignoring image.')
+                continue
 
             concatenated_dict = {}
             for key in h0.keys():
@@ -478,6 +491,11 @@ class Demo():
                 if self.image_name_select not in imgname:
                     continue   
 
-            data += self.load_single_image('.'.join(imgname.split('.')[:-1]))
+            # get image filetype 
+            self.image_format = imgname.split('.')[-1]
+            
+            data_curr = self.load_single_image('.'.join(imgname.split('.')[:-1]))
+            if len(data_curr) > 0:
+                data += data_curr
             
         return data

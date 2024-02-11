@@ -13,7 +13,9 @@ https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d3
 ... [Flickr Fits](#flickr-fits), we create SMPL-X fits for [FlickrCI3D](https://ci3d.imar.ro) via an optimization method that takes ground-truth contact annotations between two people into account.
 
 ## NEWS!!
-:boom: We have a new version of BUDDI with BEV conditioning :boom:
+:boom: Demo code available to run the optimization with BUDDI on your own images :boom:
+:boom: Improved installation scripts (with ViTPose and BEV included) :boom:
+We have a new version of BUDDI with BEV conditioning 
 
 ## Release status
 
@@ -22,8 +24,27 @@ https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d3
 | &check; | &check;  | &check; | &check; | &#x2717; |
 
 
-## Installation
+## Installation and Quick Start
 Please see [Installation](./documentation/INSTALL.md) for details. 
+
+```
+# install conda environment and download essentials and models
+./install.sh
+
+# download body models (SMPL-X, SMPL, SMIL). The script will ask for you username
+# and password for the SMPL-X and SMPL website. If you don't have an account, please
+# register under https://smpl-x.is.tue.mpg.de/ and https://smpl.is.tue.mpg.de/.
+./download_bodymodels.sh
+
+# Install BEV and ViTPose and convert body models to BEV format 
+./install_thirdparty.sh
+
+# Run optimization with BUDDI on your own images
+# We have some internet images in [this](./demo/data/FlickrCI3D_Signatures/demo/images_live) folder.
+# The script will first run BEV and ViTPose and then start the optimization with BUDDI.
+# To run the demo with OpenPose on top, please read the comments in demo.sh
+./demo.sh
+```
 
 ## Datasets
 Please see [Dataset](./documentation/DATA.md) for details.
