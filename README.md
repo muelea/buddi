@@ -14,7 +14,9 @@ https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d3
 
 ## NEWS!!
 :boom: Demo code available to run the optimization with BUDDI on your own images :boom:
+
 :boom: Improved installation scripts (with ViTPose and BEV included) :boom:
+
 We have a new version of BUDDI with BEV conditioning 
 
 ## Release status
