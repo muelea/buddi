@@ -1,7 +1,31 @@
 ## Quick start
+```
+# install conda environment
+./install_conda_env.sh
+
+# download essentials and models
+./fetch_data.sh
+
+# download body models (SMPL-X, SMPL, SMIL). The script will ask for you username
+# and password for the SMPL-X and SMPL website. If you don't have an account, please
+# register under https://smpl-x.is.tue.mpg.de/ and https://smpl.is.tue.mpg.de/.
+./fetch_bodymodels.sh
+
+# Install BEV and ViTPose and convert body models to BEV format 
+./install_thirdparty.sh
+
+# Run optimization with BUDDI on your own images
+# We have some internet images in [this](./demo/data/FlickrCI3D_Signatures/demo/images_live) folder.
+# The script will first run BEV and ViTPose and then start the optimization with BUDDI.
+# To run the demo with OpenPose on top, please read the comments in demo.sh
+./demo.sh
+```
+
+## More Details
 - You need [SMPL-X](https://smpl-x.is.tue.mpg.de), [SMPL](https://smpl-x.is.tue.mpg.de), [SMPL-A](https://github.com/Arthur151/ROMP#news), [SMIL](https://www.iosb.fraunhofer.de/en/competences/image-exploitation/object-recognition/sensor-networks/motion-analysis.html). The SMIL-X Kid Template can be found on tha [AGORA](https://agora.is.tue.mpg.de) website.
 - Note that SMPL-X, SMIL, and SMPL-A underlie different licences (not MIT)
 - Download each model from the website and extract data to $SMPL_FOLDER. Then symlink $SMPL_FOLDER to essentials: `ln -s $SMPL_FOLDER $REPO_ROOT/essentials/body_models`. 
+- You can also use [fetch_bodymodels.sh](https://github.com/muelea/buddi/blob/main/fetch_bodymodels.sh) to download everything automatically
 
 - Then run follow the instructions here to generate the body model files used [BEV](https://github.com/Arthur151/ROMP/blob/master/simple_romp/README.md#installation).
 ```

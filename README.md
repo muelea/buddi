@@ -30,13 +30,16 @@ We have a new version of BUDDI with BEV conditioning
 Please see [Installation](./documentation/INSTALL.md) for details. 
 
 ```
-# install conda environment and download essentials and models
-./install.sh
+# install conda environment
+./install_conda_env.sh
+
+# download essentials and models
+./fetch_data.sh
 
 # download body models (SMPL-X, SMPL, SMIL). The script will ask for you username
 # and password for the SMPL-X and SMPL website. If you don't have an account, please
 # register under https://smpl-x.is.tue.mpg.de/ and https://smpl.is.tue.mpg.de/.
-./download_bodymodels.sh
+./fetch_bodymodels.sh
 
 # Install BEV and ViTPose and convert body models to BEV format 
 ./install_thirdparty.sh
