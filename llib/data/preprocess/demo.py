@@ -281,10 +281,7 @@ class Demo():
         # load each annotation file
         IMG = cv2.imread(img_path)
         bev_data = np.load(bev_path, allow_pickle=True)['results'][()]
-        try:
-            vitpose_data = json.load(open(vitpose_path, 'r'))['people']
-        except:
-            import ipdb; ipdb.set_trace()
+        vitpose_data = json.load(open(vitpose_path, 'r'))['people']
         if not os.path.exists(openpose_path):
             guru.warning(f'Openpose file does not exist; using ViTPose keypoints only.')
             op_data = vitpose_data 
@@ -445,6 +442,8 @@ class Demo():
         for pidx, person_ids in enumerate(all_person_ids):
 
             image_data['contact_index'] = pidx
+            img_out_fn = f'{imgname}_{pidx}'
+            image_data['img_out_fn'] = img_out_fn
 
             h0 = self._load_single_human(
                     op_data, vitpose_data, bev_data,
