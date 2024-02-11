@@ -1,6 +1,6 @@
 # BUDDI
 <b> Generative Proxemics: A Prior for 3D Social Interaction from Images </b>\
-[[Project Page](https://muelea.github.io/buddi/)] [[arXiv](https://arxiv.org/abs/2306.09337)]
+[![Website shields.io](https://img.shields.io/website-up-down-green-red/http/shields.io.svg)](https://muelea.github.io/buddi/) [![arXiv](https://img.shields.io/badge/arXiv-2305.20091-00ff00.svg)](https://arxiv.org/abs/2306.09337) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1P7x2gY_VuFz5yjZHTRfEBzsEmA-JYGlE?usp=sharing)
 
 https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d320a2
 
@@ -13,6 +13,8 @@ https://github.com/muelea/buddi/assets/13314980/b0de0db7-e24f-4c74-8f4d-5029b7d3
 ... [Flickr Fits](#flickr-fits), we create SMPL-X fits for [FlickrCI3D](https://ci3d.imar.ro) via an optimization method that takes ground-truth contact annotations between two people into account.
 
 ## NEWS!!
+:boom: [Google Colab](https://colab.research.google.com/drive/1P7x2gY_VuFz5yjZHTRfEBzsEmA-JYGlE?usp=sharing) with custom images is available :boom:
+
 :boom: Demo code available to run the optimization with BUDDI on your own images :boom:
 
 :boom: Improved installation scripts (with ViTPose and BEV included) :boom:
