@@ -12,9 +12,10 @@ ln -s $ORIG_DATASETS_FOLDER $BUDDI_ROOT/datasets/original
 ln -s $PROCESSED_DATASETS_FOLDER $BUDDI_ROOT/datasets/processed
 ```
 
-You can download the train/val/test splits from [here](https://drive.google.com/drive/folders/1mgV2AwzOhEm2twCpKUJhc1WVL5AYjpXM?usp=sharing).
-Coming today: The Flickr Fits (validation and test) with images are available [here](https://drive.google.com/file/d/1jnZx0ZwN6HOdwqbPCrNRNxCFAWRAsUtL/view?usp=sharing) [3GB].
-Coming soon: The processed dataset files that go into `$PROCESSED_DATASETS_FOLDER` for FlickrCI3D, Hi4D and CHI3D.
+## Download
+- You can download the train/val/test splits from [here](https://drive.google.com/drive/folders/1mgV2AwzOhEm2twCpKUJhc1WVL5AYjpXM?usp=sharing). They are in each datasets's zip file.
+- The Flickr Fits (validation and test) with images are available [here](https://drive.google.com/file/d/1jnZx0ZwN6HOdwqbPCrNRNxCFAWRAsUtL/view?usp=sharing) [3GB].
+- The processed dataset files that go into `$PROCESSED_DATASETS_FOLDER` for FlickrCI3D, Hi4D and CHI3D (coming soon).
 
 ------------
 ## FlickrCI3D
@@ -33,7 +34,7 @@ Coming soon: The processed dataset files that go into `$PROCESSED_DATASETS_FOLDE
     ```
 
 ### Auxiliary data (pseudo-ground truth fits)
-- Download our pseudo ground-truth fits for FlickrCI3D and auxiliary data like BEV, keypoints, etc. from [here](url.url).
+- Download our pseudo ground-truth fits for FlickrCI3D and auxiliary data like BEV, keypoints, etc. (coming soon).
 - Extract data to `$PROCESSED_DATASETS_FOLDER`
     ```bash
     ├── $PROCESSED_DATASETS_FOLDER
