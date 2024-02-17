@@ -13,7 +13,7 @@ ln -s $PROCESSED_DATASETS_FOLDER $BUDDI_ROOT/datasets/processed
 ```
 
 You can download the train/val/test splits from [here](https://drive.google.com/drive/folders/1mgV2AwzOhEm2twCpKUJhc1WVL5AYjpXM?usp=sharing).
-Coming today: The Flickr Fits (validation and test) with images are availble [here](url.url) [3GB].
+Coming today: The Flickr Fits (validation and test) with images are available [here](url.url) [3GB].
 Coming soon: The processed dataset files that go into $PROCESSED_DATASETS_FOLDER for FlickrCI3D, Hi4D and CHI3D.
 
 ------------
