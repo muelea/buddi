@@ -157,9 +157,9 @@ Previous work on human pose and shape estimation has made this project possible:
 ```
 @article{mueller2023buddi,
     title={Generative Proxemics: A Prior for {3D} Social Interaction from Images},
-    author={M{\"u}ller, Lea and Ye, Vickie and Pavlakos, Georgios and Black, Michael J. and Kanazawa, Angjoo},
-    journal={arXiv preprint 2306.09337v2},
-    year={2023}}
+    author={M{\“u}ller, Lea and Ye, Vickie and Pavlakos, Georgios and Black, Michael J. and Kanazawa, Angjoo},
+    booktitle = {{Computer Vision and Pattern Recognition (CVPR)}},
+    year={2024}}
 ```
 
 ## License
