@@ -11,7 +11,10 @@ zip_file="essentials.zip"
 
 # Download essentials.zip
 # wget "$zip_url" -O "$zip_file"  --no-check-certificate --continue
-gdown https://drive.google.com/uc?id=16eYddIxKPaZU-PjrH1x0Fgsen-x0ip3f
+# old link has been suspended
+# gdown https://drive.google.com/uc?id=16eYddIxKPaZU-PjrH1x0Fgsen-x0ip3f
+# new url: https://drive.google.com/file/d/1MsYaHuX2w7GQ7e3OzPckyJ9sxBnf6wE8/view?usp=share_link 
+gdown 1MsYaHuX2w7GQ7e3OzPckyJ9sxBnf6wE8
 
 # Extract contents to data/ folder
 unzip "$zip_file" #-d "$extract_folder"
